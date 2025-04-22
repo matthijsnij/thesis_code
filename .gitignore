@@ -1,0 +1,14 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# C++
+*.o
+*.out
+*.exe
+
+# General
+.DS_Store
+*.log
