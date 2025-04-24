@@ -21,9 +21,10 @@ make_01_norm <- function(x) {
 #' @import MASS
 #' @import collapse
 #' @import SoftBart
+#' what follows now are descriptions of soft surbart by eoghan, so do not reflect MNP framework
 #' @param x.train The training covariate data for all training observations. Matrix or list. If one matrix (not a list), then the same set of covariates are used for each outcome. Each element of the list is a covariate matrix that  corresponds to a different outcome variable. Number of rows equal to the number of observations. Number of columns equal to the number of covariates.
 #' @param x.test The test covariate data for all test observations. Matrix or list. If one matrix (not a list), then the same set of covariates are used for each outcome. Each element of the list is a covariate matrix that  corresponds to a different outcome variable. Number of rows equal to the number of observations. Number of columns equal to the number of covariates.
-#' @param y The n x 1 training data vector of categorical responses.
+#' @param y The training data list of vectors of outcomes
 #' @param num_outcomes The number of outcome variables.
 #' @param num_obs The number of observations per outcome.
 #' @param num_test_obs THe number of test observations per outcome.
@@ -118,25 +119,25 @@ make_01_norm <- function(x) {
 #' @export
 
 # ------------- SOFT MPBART
-soft_surbart_original <- function(x.train, #either one matrix or list
-                                  x.test, #either one matrix or list
+soft_mpbart_original <- function(x.train, # predictor matrix training set
+                                  x.test, # predictor matrix test set
                                   y, # categorical response
-                                  num_outcomes,
-                                  num_obs,
-                                  num_test_obs,
-                                  n.iter=1000,
-                                  n.burnin=100,
-                                  n.trees = 50L,
-                                  n.burn = 0L,
-                                  n.samples = 1L,
-                                  n.thin = 1L,
-                                  n.chains = 1,
-                                  n.threads = guessNumCores(),
-                                  printEvery = 100L,
-                                  printCutoffs = 0L,
-                                  rngKind = "default",
-                                  rngNormalKind = "default",
-                                  rngSeed = NA_integer_,
+                                  num_latent, # number of latent variables (was num_outcomes)
+                                  num_obs, # number of obs per outcome (? latent variables not observed)
+                                  num_test_obs, # number of test obs per outcome
+                                  n.iter=1000, # number of iterations excluding burnin
+                                  n.burnin=100, # number of burnin iterations
+                                  n.trees = 50L, # (dbarts control) number of trees in sum-of-trees. Each latent variable will have a distinct sum-of-trees, but the number of trees in them is the same.
+                                  n.burn = 0L, # not used? (oc)
+                                  n.samples = 1L, # not used? (oc)
+                                  n.thin = 1L, # not used? (oc)
+                                  n.chains = 1, # (dbarts control) number of indep chains for dbarts sampler to use (oc)
+                                  n.threads = guessNumCores(), # (dbarts control) number of CPU cores for computation, not sure if that relevant
+                                  printEvery = 100L, # (dbarts control) not used? (oc). Progress updates every 100 iterations
+                                  printCutoffs = 0L, # (dbarts control) not used? (oc). Print cutoff values in splitting. Probably can go due to soft splits?
+                                  rngKind = "default", # (dbarts control) type of RNG. not used? (oc)
+                                  rngNormalKind = "default", # (dbarts control) how to generate std. normals. not used? (oc)
+                                  rngSeed = NA_integer_, # (dbarts control) set.seed for dbarts algorithms. not used? (oc)
                                   updateState = FALSE,
                                   tree.prior = dbarts:::cgm,
                                   node.prior = dbarts:::normal,
