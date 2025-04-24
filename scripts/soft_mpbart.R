@@ -14,7 +14,7 @@ make_01_norm <- function(x) {
 #' @title Soft Multinomial Probit Bayesian Additive Regression Trees implemented using MCMC by changing the SURBART approach from Chakraborty (2016).
 #'
 #' @description Soft Multinomial Probit Bayesian Additive Regression Trees implemented using MCMC by changing the SURBART approach from Chakraborty (2016).
-#' in particular, code is changed to accommodate categorical input + sample latent variables in the MCMC
+#' In particular, code is changed to accommodate categorical input + sample the latent variables in the MCMC.
 #' @import dbarts
 #' @import truncnorm
 #' @import LaplacesDemon
@@ -54,77 +54,17 @@ make_01_norm <- function(x) {
 #' \item{ytrain_draws}{Matrix of MCMC draws of outcomes for training observations. Number of rows equal to the number of observations multiplied by the number of outcomes. The rows should be ordered by beginning with all N (units') observations for the first outcome variable, then all N for the second outcome variable and so on. Number of columns equals n.iter.}
 #' \item{ytest_draws}{Matrix of MCMC draws of outcomes for training observations. Number of rows equal to the number of observations multiplied by the number of outcomes. The rows should be ordered by beginning with all N (units') observations for the first outcome variable, then all N for the second outcome variable and so on. Number of columns equals n.iter.}
 #' \item{Sigma_draws}{3 dimensional array of MCMC draws of the covariance matrix for the outcome-specific error terms. The numbers of rows and columns equal are equal to the number of outcome variables. The number of slices is }
-#' @examples
-#'
-#' library(foreign)
-#' library(systemfit)
-#'
-#' hsb2 <- read.dta("https://stats.idre.ucla.edu/stat/stata/notes/hsb2.dta")
-#'
-#' train_inds <- sample(1:nrow(hsb2),size = 180, replace = FALSE)
-#' test_inds <- (1:nrow(hsb2))[-train_inds]
-#'
-#' hsb2train <- hsb2[train_inds,]
-#' hsb2test <- hsb2[test_inds,]
-#'
-#'
-#' r1 <- read~female + as.numeric(ses) + socst
-#' r2 <- math~female + as.numeric(ses) + science
-#'
-#' fitsur <- systemfit(list(readreg = r1, mathreg = r2), data=hsb2train)
-#'
-#' linSURpreds <- predict(fitsur, hsb2test)
-#'
-#' sqrt(mean((linSURpreds$readreg.pred-hsb2test$read)^2))
-#'
-#' sqrt(mean((linSURpreds$mathreg.pred-hsb2test$math)^2))
-#'
-#'
-#'
-#' xtrain <- list()
-#' xtrain[[1]] <- cbind(hsb2train$female, as.numeric(hsb2train$ses), hsb2train$socst)
-#' xtrain[[2]] <- cbind(hsb2train$female, as.numeric(hsb2train$ses), hsb2train$science)
-#'
-#' xtest <- list()
-#' xtest[[1]] <- cbind(hsb2test$female, as.numeric(hsb2test$ses), hsb2test$socst)
-#' xtest[[2]] <- cbind(hsb2test$female, as.numeric(hsb2test$ses), hsb2test$science)
-#'
-#' ylist <- list()
-#' ylist[[1]] <- hsb2train$read
-#' ylist[[2]] <- hsb2train$math
-#'
-#'
-#'
-#' surbartres <- surbart_original(x.train = xtrain, #either one matrix or list
-#'                              x.test = xtest, #either one matrix or list
-#'                              y = ylist,
-#'                              2,
-#'                              nrow(hsb2train),
-#'                              nrow(hsb2test),
-#'                              n.iter = 1000,
-#'                              n.burnin = 100)
-#'
-#'
-#' readpredsurbart <- apply(surbartres$mutest_draws[,,1],2,mean)
-#'
-#' mathpredsurbart <- apply(surbartres$mutest_draws[,,2],2,mean)
-#'
-#' sqrt(mean((readpredsurbart  -hsb2test$read)^2))
-#'
-#' sqrt(mean((mathpredsurbart- hsb2test$math)^2))
-#'
-#'
-#'
-#'
 #' @export
 
 # ------------- SOFT MPBART
 soft_mpbart_original <- function(x.train, # predictor matrix training set
                                   x.test, # predictor matrix test set
-                                  y, # categorical response
+                                  y.train, # categorical response training set
+                                  y.test, # categorical response test set
+                                  K, # number of response variables categories
                                   num_latent, # number of latent variables (was num_outcomes)
-                                  num_obs, # number of obs per outcome (? latent variables not observed)
-                                  num_test_obs, # number of test obs per outcome
+                                  num_obs, # number of train obs 
+                                  num_test_obs, # number of test obs 
                                   n.iter=1000, # number of iterations excluding burnin
                                   n.burnin=100, # number of burnin iterations
                                   n.trees = 50L, # (dbarts control) number of trees in sum-of-trees. Each latent variable will have a distinct sum-of-trees, but the number of trees in them is the same.
@@ -138,15 +78,15 @@ soft_mpbart_original <- function(x.train, # predictor matrix training set
                                   rngKind = "default", # (dbarts control) type of RNG. not used? (oc)
                                   rngNormalKind = "default", # (dbarts control) how to generate std. normals. not used? (oc)
                                   rngSeed = NA_integer_, # (dbarts control) set.seed for dbarts algorithms. not used? (oc)
-                                  updateState = FALSE,
-                                  tree.prior = dbarts:::cgm,
-                                  node.prior = dbarts:::normal,
-                                  resid.prior = dbarts:::chisq,
-                                  proposal.probs = c(birth_death = 0.5, swap = 0.1, change = 0.4, birth = 0.5),
-                                  sigmadbarts = NA_real_,
-                                  print.opt = 100,
-                                  quiet = FALSE,
-                                  outcome_draws = FALSE,
+                                  updateState = FALSE, # (dbarts control) TRUE = full posterior inference but slower, FALSE = only for prediction, faster. TRUE is default. not used? (oc)
+                                  tree.prior = dbarts:::cgm, # (dbarts option) the tree prior. Default cgm(0.95, 2). Pass as dbarts:::cgm(0.95, 2). not used? (oc)
+                                  node.prior = dbarts:::normal, # (dbarts option) the terminal node param prior. Pass as dbarts:::normal(k). As data centered around 0. Here k controls regularization in the prior variance sigma^2 / k.
+                                  resid.prior = dbarts:::chisq, # (dbarts option) residual variance prior. Pass as dbarts:::chisq(3, 0.95).
+                                  proposal.probs = c(birth_death = 0.5, swap = 0.1, change = 0.4, birth = 0.5), # (dbarts option) MH proposal probabilities. Might want to set swap to 0.
+                                  sigmadbarts = NA_real_, # (dbarts option) residual stddev estimate. If NA, linear model with all predictors is used.
+                                  print.opt = 100, # (dbarts control) Controls output formatting and verbosity.
+                                  quiet = FALSE, # does not show progress bar if TRUE.
+                                  outcome_draws = FALSE, # if TRUE, output draws of the outcome.
                                   SB_group = NULL,
                                   SB_alpha = 1,
                                   SB_beta = 2,
@@ -165,51 +105,28 @@ soft_mpbart_original <- function(x.train, # predictor matrix training set
                                   SB_weights = NULL,
                                   SB_normalize_Y = TRUE){
   
-  # INPUT DATA DIMENSION CHECKS -------------
+  # -------------------- INPUT DATA CHECKS -------------------------
   
-  if((!is.matrix(x.train))&(!is.list(x.train))) stop("argument x.train must be a double matrix or a list of matrices.")
-  if((!is.matrix(x.test))&(!is.list(x.test))) stop("argument x.test must be a double matrix or a list of matrices.")
+  # check if covariates are in a matrix
+  if(!is.matrix(x.train)) stop("argument x.train must be a double matrix.")
+  if(!is.matrix(x.test)) stop("argument x.test must be a double matrix.")
   
+  # check if response is in a vector
+  if(!is.vector(y.train)) stop("argument y.train must be a vector.")
+  if(!is.vector(y.test)) stop("argument y.test must be a vector.")
   
+  # check if correct number of observations
+  if(nrow(x.train) != num_obs) stop("number of rows of x.train must equal num_obs.")
+  if(nrow(x.test) != num_test_obs) stop("number of rows of x.test must equal num_test_obs.")
+  if(length(y.train) != num_obs) stop("length of y.train must equal number of observations.")
+  if(length(y.train) != num_test_obs) stop("length of y.train must equal number of observations.")
   
-  if(is.matrix(x.train)){
-    if(!(is.matrix(x.test))){stop("Both x.train and x.test must be matrices, or both must be lists.")}
-    print("input is a matrix. Using same covariates for all outcomes.")
-    Xlist <- lapply(1:num_outcomes, function(j) x.train)
-    Xtestlist <- lapply(1:num_outcomes, function(j) x.test)
-    if(nrow(x.train) != num_obs) stop("number of rows of x.train must equal num_obs.")
-    if(nrow(x.test) != num_test_obs) stop("number of rows of x.test must equal num_test_obs.")
-    
-    if(nrow(x.train) != length(y[[1]])) stop("number of rows of x.train must equal length of each element of y.train")
-    if((ncol(x.test)!=ncol(x.train))) stop("input x.test must have the same number of columns as x.train")
-    
-    
-  }
+  # check if number of columns for x.test and x.train are the same
+  if((ncol(x.test)!=ncol(x.train))) stop("input x.test must have the same number of columns as x.train.")
   
-  
-  if(is.list(x.train)){
-    print("input is a list. Using separate covariate matrix for each outcome.")
-    if(!(is.matrix(x.train[[1]]))){stop("Elements of the x.train list must be matrices.")}
-    
-    if(!(is.list(x.test))){stop("Both x.train and x.test must be matrices, or both must be lists.")}
-    if(!(is.matrix(x.test[[1]]))){stop("Elements of the x.test list must be matrices.")}
-    
-    if(length(x.train) != num_outcomes ){ stop("Number of elements of covariate matrix list x.train must equal num_outcomes.") }
-    Xlist <- x.train
-    Xtestlist <- x.test
-    
-    if(nrow(x.train[[1]]) != num_obs) stop("number of rows of each element of x.train must equal num_obs.")
-    if(nrow(x.test[[1]]) != num_test_obs) stop("number of rows of x.test must equal num_test_obs.")
-    
-    if((ncol(x.test[[1]])!=ncol(x.train[[1]]))) stop("Each element of input list (of matrices) x.test must have the same number of columns as each element of x.train list.")
-    
-    
-    if(nrow(x.train[[1]]) != length(y[[1]])) stop("number of rows in each element of x.train must equal length of each element of y.train")
-    
-  }
-  
-  if(length(y) != num_outcomes) stop("length of list y must equal number of outcomes.")
-  if(length(y[[1]]) != num_obs) stop("length of each vector element of the list y must equal number of observations.")
+  # check if all categories exist in y
+  if(length(unique(y.train))!= K) stop("number of distinct values y.train does not equal number of categories K.")
+  if(length(unique(y.test))!= K) stop("number of distinct values y.test does not equal number of categories K.")
   
   
   for(matind in 1:num_outcomes){
