@@ -57,11 +57,12 @@ make_01_norm <- function(x) {
 #' @export
 
 # ------------- SOFT MPBART
-soft_mpbart_original <- function(x.train, # predictor matrix training set
+model_soft_mpbart <- function(x.train, # predictor matrix training set
                                   x.test, # predictor matrix test set
                                   y.train, # categorical response training set
                                   y.test, # categorical response test set
                                   K, # number of response variables categories
+                                  base, # reference category
                                   num_latent, # number of latent variables (was num_outcomes)
                                   num_obs, # number of train obs 
                                   num_test_obs, # number of test obs 
@@ -129,90 +130,23 @@ soft_mpbart_original <- function(x.train, # predictor matrix training set
   if(length(unique(y.test))!= K) stop("number of distinct values y.test does not equal number of categories K.")
   
   
-  for(matind in 1:num_outcomes){
-    
-    x.traintemp <- Xlist[[matind]]
-    x.testtemp <- Xtestlist[[matind]]
-    
-    ecdfs   <- list()
-    for(i in 1:ncol(x.traintemp)) {
-      ecdfs[[i]] <- ecdf(x.traintemp[,i])
-      if(length(unique(x.traintemp[,i])) == 1) ecdfs[[i]] <- identity
-      if(length(unique(x.traintemp[,i])) == 2) ecdfs[[i]] <- make_01_norm(x.traintemp[,i])
-    }
-    for(i in 1:ncol(x.traintemp)) {
-      x.traintemp[,i] <- ecdfs[[i]](x.traintemp[,i])
-      if(nrow(x.testtemp) > 0){
-        x.testtemp[,i] <- ecdfs[[i]](x.testtemp[,i])
-      }
-    }
-    
-    rm(ecdfs)
-    
-    Xlist[[matind]] <- x.traintemp
-    Xtestlist[[matind]] <- x.testtemp
-    
-  }
+  # ------------------ DATA PREPROCESSING ------------------------
   
+
   
-  n <- length(y)
+  # --------------------- SET PRIOR PARAMETER VALUES -------------------------
   
-  # draw = list(
-  #   Z.mat = array(NA, dim = c(n, n.iter)),
-  #   Z.matcens = array(NA, dim = c(n0, n.iter)),
-  #   #Z.matuncens = array(NA, dim = c(n1, n.iter)),
-  #   Z.matcensbelow = array(NA, dim = c(n_censbelow, n.iter)),
-  #   Z.matcensabove = array(NA, dim = c(n_censabove, n.iter)),
-  #   mu = array(NA, dim = c(n, n.iter)),#,
-  #   mucens = array(NA, dim = c(n0, n.iter)),#,
-  #   muuncens = array(NA, dim = c(n1, n.iter)),#,
-  #   mucensbelow = array(NA, dim = c(n_censbelow, n.iter)),#,
-  #   mucensabove = array(NA, dim = c(n_censabove, n.iter)),#,
-  #   ystar = array(NA, dim = c(n, n.iter)),#,
-  #   ystarcens = array(NA, dim = c(n0, n.iter)),#,
-  #   ystaruncens = array(NA, dim = c(n1, n.iter)),#,
-  #   ystarcensbelow = array(NA, dim = c(n_censbelow, n.iter)),#,
-  #   ystarcensabove = array(NA, dim = c(n_censabove, n.iter)),#,
-  #   test.mu =  array(NA, dim = c(ntest, n.iter)),#,
-  #   test.y_nocensoring =  array(NA, dim = c(ntest, n.iter)),#,
-  #   test.y_withcensoring =  array(NA, dim = c(ntest, n.iter)),#,
-  #   test.probcensbelow =  array(NA, dim = c(ntest, n.iter)),#,
-  #   test.probcensabove =  array(NA, dim = c(ntest, n.iter)),
-  #   sigma = rep(NA, n.iter)
-  # )
+  # Sigma ~ IW (r, R) see Chakraborty (2016)
   
+  rprior <- num_latent + 1 # IW prior d.o.f; 1 + dimension_of_outcome (here number of latent variables)
+  Rprior <- rprior*diag(num_latent) # IW prior scale matrix; r * Identity(num_latent x num_latent)
   
+  # initialize sigma draw (why is this here?)
   
-  Ymu <- rep(NA, num_outcomes)
-  Ysd <- rep(NA, num_outcomes)
-  
-  
-  # standardize outcomes
-  for(i in 1:num_outcomes){
-    Ymu[i] <- mean(y[[i]])
-    Ysd[i] <- sd(y[[i]])
-    y[[i]] <- (y[[i]]-Ymu[i])/Ysd[i]
-  }
-  
-  ymat <- matrix(NA, nrow = num_obs, ncol = num_outcomes)
-  
-  for(i in 1:num_outcomes){
-    ymat[,i] <- y[[i]]
-  }
-  
-  # set various prior parameter values
-  
-  rprior <- num_outcomes +1
-  Rprior <- rprior*diag(num_outcomes)
-  
-  # initialize sigma draw
-  
-  rss_initial <- t(ymat) %*% ymat
-  
-  print("rss_initial = ")
-  print(rss_initial)
-  
-  Sigma_mat <- rinvwishart(rprior + num_obs, Rprior + rss_initial)
+  rss_initial <- t(ymat) %*% ymat # figure out what this initialization is
+
+  # posterior draw of Sigma (why is this here?)
+  Sigma_mat <- rinvwishart(rprior + num_obs, Rprior + rss_initial) # Posterior sample of Sigma ~ IW (r + n, R + residual_sum_of_squares)
   
   # ch <- chol(Sigma_mat)
   # dd <- diag(ch)
