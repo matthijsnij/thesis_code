@@ -26,8 +26,19 @@ soft_mpbart <- function(y_train, # training data - outcomes
   num_obs_train = length(y_train)
   num_obs_test = length(y_test)
   
-  # initialize all model parameters
-  Sigma <- diag(K)
+  # ------------ INITIALIZE PARAMS ----------------
+  
+  z <- matrix(NA_real_, nrow = num_obs_train, ncol = K)
+  mu_z <- rep(0, K)
+  Sigma <- diag(K) # set Sigma to identity matrix
+  
+  # initialize latent variables from standard mv normal
+  z <- mvrnorm(num_obs_train, mu = mu_z, Sigma = Sigma)
+  
+  # initialize each sum-of-trees model with 'num_trees' single node trees + what to do with leaf node params
+  
+  
+  
 
   # ------- MCMC --------
   for (iter in 1:num_burnin+num_sim) {
