@@ -6,6 +6,7 @@ library(caret)
 library(MASS)
 library(MCMCpack)
 library(TruncatedNormal)
+library(SoftBart)
 
 # ---------------- FUNCTION TO SAMPLE LATENT VARIABLES FROM TRUNCATED MULTIVARIATE NORMAL ---------------------
 
@@ -86,7 +87,7 @@ glass_X_test <- glass_X[-folds[[1]], ]
 
 # ------------- SOFT MPBART FUNCTION -----------------
 
-#'@description MCMC algorithm for soft MPBART
+#'@description Implementation for soft MPBART
 #'
 #'@param y_train Vector of training data - class labels
 #'@param X_train Matrix of training data - covariates
@@ -102,11 +103,24 @@ soft_mpbart <- function(y_train, # training data - outcomes
                         X_train, # training data - covariates
                         y_test, # test data - outcomes
                         X_test, # test data - covariates
-                        num_burnin, # number of burn-in iterations
-                        num_sim, # number of simulations (excl. burn-in)
-                        num_trees, # number of trees in the sum-of-trees model
                         K, # number of outcome categories - 1 (dim of latent vector)
                         seed, # seed used in set.seed to control randomness. If not passed, function will generate random seed
+                        # parameters
+                        num_burnin = 5000, # number of burn-in iterations
+                        num_sim = 5000, # number of simulation iterations (excl. burn-in)
+                        num_trees = 200, # number of trees in the sum-of-trees model
+                        alpha = 1, # controls sparsity in Dirichlet prior
+                        beta = 2, # branching process prior - penalize depth
+                        gamma = 0.95, # branching process prior - penalize new nodes
+                        e = 2, # leaf node param prior - controls prior variance
+                        sigma_hat = NULL, #????
+                        shape = 1, # shape parameter of gating probabilities????
+                        width = 0.1, # bandwidth of gating probabilities
+                        alpha_scale = NULL, # scale of hyperprior on alpha
+                        alpha_shape_1 = 0.5, # shape 1 of hyperprior on alpha
+                        alpha_shape_2 = 1, # shape 2 of hyperprior on alpha
+                        tau_rate = 10, # rate of exponential prior on bandwidth parameters tau
+                        normalize_Y #?????
                         ) {
   
   # set some values
@@ -132,7 +146,22 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   # initialize each sum-of-trees model with 'num_trees' single node trees + what to do with leaf node params
   
-  
+  # parameters for softBART
+  hypers <- Hypers(X = X_train, 
+                   y = y_train, 
+                   alpha = alpha, 
+                   beta = beta, 
+                   gamma = gamma, 
+                   k = e, 
+                   sigma_hat = sigma_hat,
+                   shape = shape, 
+                   width = width,
+                   num_tree = num_trees,
+                   alpha_scale = alpha_scale,
+                   alpha_shape_1 = alpha_shape_1,
+                   alpha_shape_2 = alpha_shape_2,
+                   tau_rate = tau_rate
+  )
   
 
   # ------- MCMC --------
