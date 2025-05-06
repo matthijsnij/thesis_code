@@ -4,6 +4,46 @@
 # packages
 library(MASS)
 library(MCMCpack)
+library(TruncatedNormal)
+
+# ---------------- FUNCTION TO SAMPLE FROM TRUNCATED MULTIVARIATE NORMAL ---------------------
+
+# the function assumes category 0 is the reference level
+sample_truncated_mvnormal <- function(mu, # mean vector Kx1
+                                      Sigma, # covariance matrix KxK
+                                      y_i, # observed class label 
+                                      K # dimension of latent vector to be sampled
+) {
+  
+  # case: y_i is the reference category
+  if (y_i == 0) {
+    # then all z_ik < 0 for k = 1,...,K
+    A <- diag(K)
+    b <- rep(0, K)
+  } else {
+    # create constraints
+    A <- matrix(NA_real_, nrow = K, ncol = K)
+    b <- rep(0, K)
+    
+    # latent utility corresponding to observed y_i has to be larger then all others
+    # constraints z_j - z_{y_i} < 0 for j != y_i
+    row <- 1
+    for (j in 1:K) {
+      if (j != y_i) {
+        A[row, y_i] <- -1
+        A[row, j] <- 1
+        row <- row + 1
+      }
+    }
+    # constraint maximum utility should be larger than 0, -z_{y_i} < 0
+    A[row, y_i] <- -1
+    b <- rep(0, nrow(A))
+  }
+  
+  # sample and return
+  z_i <- rtmvnorm(n = 1, mu = mu, Sigma = Sigma, D = A, lower = rep(-Inf, K), upper = b)
+  return(drop(z_i))
+}
 
 # ------------ READ DATA ---------------
 
@@ -12,7 +52,7 @@ library(MCMCpack)
 
 
 
-
+# ------------- SOFT MPBART FUNCTION -----------------
 soft_mpbart <- function(y_train, # training data - outcomes
                         X_train, # training data - covariates
                         y_test, # test data - outcomes
@@ -21,11 +61,18 @@ soft_mpbart <- function(y_train, # training data - outcomes
                         num_sim, # number of simulations (excl. burn-in)
                         num_trees, # number of trees in the sum-of-trees model
                         K, # number of outcome categories - 1 (dim of latent vector)
+                        seed, # seed used in set.seed to control randomness. If not passed, function will generate random seed
                         ) {
   
   # set some values
   num_obs_train = length(y_train)
   num_obs_test = length(y_test)
+  
+  # set seed for reproduceability
+  if (is.null(seed)) {
+    seed <- as.integer(Sys.time()) %% .Machine$integer.max
+  }
+  set.seed(seed = seed)
   
   # ------------ INITIALIZE PARAMS ----------------
   
@@ -47,9 +94,9 @@ soft_mpbart <- function(y_train, # training data - outcomes
   for (iter in 1:num_burnin+num_sim) {
     
     # sample latent variables from truncated multivariate normal
-    for (i in 1:num_obs_train) {
-      
-    }
+    z <- t(sapply(1:num_obs_train, function(i) {
+      sample_truncated_mvnorm(mu = mu_z, Sigma = Sigma, y_i = y_train[i], K = K)
+    }))
     
     
     
@@ -86,6 +133,10 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   
 }
+
+
+  
+
 
 
 
