@@ -6,10 +6,10 @@ library(MASS)
 library(MCMCpack)
 library(TruncatedNormal)
 
-# ---------------- FUNCTION TO SAMPLE FROM TRUNCATED MULTIVARIATE NORMAL ---------------------
+# ---------------- FUNCTION TO SAMPLE LATENT VARIABLES FROM TRUNCATED MULTIVARIATE NORMAL ---------------------
 
 # the function assumes category 0 is the reference level
-sample_truncated_mvnormal <- function(mu, # mean vector Kx1
+sample_latent_variables <- function(mu, # mean vector Kx1
                                       Sigma, # covariance matrix KxK
                                       y_i, # observed class label 
                                       K # dimension of latent vector to be sampled
@@ -46,7 +46,19 @@ sample_truncated_mvnormal <- function(mu, # mean vector Kx1
 }
 
 # ------------ READ DATA ---------------
+glass_data <- read.csv('C:\Users\matth\OneDrive\Bureaublad\msc_thesis\Data\glass\glass.data', header = FALSE)
+glass_y <- glass_data[[ncol(glass_data)]]
+glass_X <- as.matrix(glass_data[, 2:(ncol(glass_data)-1)])
 
+n <- length(glass_y)
+
+# split train/test sets, 80/20%
+set.seed(123) # set seed for randomness
+train_indices <- sample(seq_len(n), size = 0.8 * n)
+glass_y_train <- glass_y[train_indices]
+glass_X_train <- glass_X[train_indices, ]
+glass_y_test <- glass_y[-train_indices]
+glass_X_test <- glass_X[-train_indices, ]
 
 # ------------ PREPROCESS DATA -------------
 
@@ -70,7 +82,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   # set seed for reproduceability
   if (is.null(seed)) {
-    seed <- as.integer(Sys.time()) %% .Machine$integer.max
+    seed <- as.integer(Sys.time()) %% .Machine$integer.max # pseudo-random seed if not provided
   }
   set.seed(seed = seed)
   
@@ -80,7 +92,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
   mu_z <- rep(0, K)
   Sigma <- diag(K) # set Sigma to identity matrix
   
-  z <- mvrnorm(num_obs_train, mu = mu_z, Sigma = Sigma) # initialize latent variables from standard mv normal
+  z <- mvrnorm(num_obs_train, mu = mu_z, Sigma = Sigma) # initialize latent variables from standard mv normal # remove?
   
   nu_prior <- K + 1 # prior d.o.f inv-Wishart
   scalematr_prior <- nu_prior * diag(K)
@@ -95,10 +107,8 @@ soft_mpbart <- function(y_train, # training data - outcomes
     
     # sample latent variables from truncated multivariate normal
     z <- t(sapply(1:num_obs_train, function(i) {
-      sample_truncated_mvnorm(mu = mu_z, Sigma = Sigma, y_i = y_train[i], K = K)
+      sample_latent_variables(mu = mu_z, Sigma = Sigma, y_i = y_train[i], K = K)
     }))
-    
-    
     
     for (k in 1:K) {
       
