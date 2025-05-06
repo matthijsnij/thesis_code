@@ -9,7 +9,13 @@ library(TruncatedNormal)
 
 # ---------------- FUNCTION TO SAMPLE LATENT VARIABLES FROM TRUNCATED MULTIVARIATE NORMAL ---------------------
 
-# the function assumes category 0 is the reference level
+#'@description Function to sample latent variables from truncated multivariate normal distribution (TMVN)
+#'
+#'@param mu The Kx1 mean vector of the TMVN distribution
+#'@param Sigma The KxK covariance matrix of the TMVN distribution
+#'@param y_i The observed class label (scalar)
+#'@param K Dimension of the latent vector to be sampled
+#'@return A draw of the latent vector from a TMVN distribution
 sample_latent_variables <- function(mu, # mean vector Kx1
                                       Sigma, # covariance matrix KxK
                                       y_i, # observed class label 
@@ -79,6 +85,19 @@ glass_y_test <- glass_y[-folds[[1]]]
 glass_X_test <- glass_X[-folds[[1]], ]
 
 # ------------- SOFT MPBART FUNCTION -----------------
+
+#'@description MCMC algorithm for soft MPBART
+#'
+#'@param y_train Vector of training data - class labels
+#'@param X_train Matrix of training data - covariates
+#'@param y_test Vector of test data - class labels
+#'@param X_test Matrix of test data - covariates
+#'@param num_burnin Number of burn-in iterations for the sampler
+#'@param num_sim Number of simulation iterations for the sampler, excluding burn-in
+#'@param num_trees Number of trees used in each sum-of-trees model
+#'@param K Number of class labels - 1 / Dimension of latent vector
+#'@param seed Seed used for controlling randomness
+#'
 soft_mpbart <- function(y_train, # training data - outcomes
                         X_train, # training data - covariates
                         y_test, # test data - outcomes
@@ -117,6 +136,11 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
 
   # ------- MCMC --------
+  
+  # initialize lists to store draws
+  z_draws <- vector("list", num_sim)
+  
+  
   for (iter in 1:num_burnin+num_sim) {
     
     # sample latent variables from truncated multivariate normal
@@ -149,7 +173,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
     
     # save draws if after burn-in
     if (iter > num_burnin) {
-      
+      z_draws[[iter - num_burnin]] <- z
     }
     
   }
