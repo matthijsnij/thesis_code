@@ -2,6 +2,7 @@
 
 
 # packages
+library(caret)
 library(MASS)
 library(MCMCpack)
 library(TruncatedNormal)
@@ -46,23 +47,36 @@ sample_latent_variables <- function(mu, # mean vector Kx1
 }
 
 # ------------ READ DATA ---------------
+
 glass_data <- read.csv('C:\Users\matth\OneDrive\Bureaublad\msc_thesis\Data\glass\glass.data', header = FALSE)
 glass_y <- glass_data[[ncol(glass_data)]]
 glass_X <- as.matrix(glass_data[, 2:(ncol(glass_data)-1)])
 
-n <- length(glass_y)
-
-# split train/test sets, 80/20%
-set.seed(123) # set seed for randomness
-train_indices <- sample(seq_len(n), size = 0.8 * n)
-glass_y_train <- glass_y[train_indices]
-glass_X_train <- glass_X[train_indices, ]
-glass_y_test <- glass_y[-train_indices]
-glass_X_test <- glass_X[-train_indices, ]
 
 # ------------ PREPROCESS DATA -------------
 
+# clean the class labels such that they fall in the range [0,5]
+# there is no class 4 in the data set
+for (i in 1:length(glass_y)) {
+  if (glass_y[i] < 4) {
+    glass_y[i] <- glass_y[i] - 1
+  } else {
+    glass_y[i] <- glass_y[i] - 2
+  }
+}
 
+
+# ------------ CREATE TRAIN AND TEST SETS
+
+# generate train and test set folds
+num_folds <- 5
+folds <- createFolds(glass_y, k = num_folds, list = TRUE, returnTrain = TRUE)
+
+# split the data based on these indices
+glass_y_train <- glass_y[folds[[1]]]
+glass_X_train <- glass_X[folds[[1]], ]
+glass_y_test <- glass_y[-folds[[1]]]
+glass_X_test <- glass_X[-folds[[1]], ]
 
 # ------------- SOFT MPBART FUNCTION -----------------
 soft_mpbart <- function(y_train, # training data - outcomes
