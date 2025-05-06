@@ -3,6 +3,7 @@
 
 # packages
 library(MASS)
+library(MCMCpack)
 
 # ------------ READ DATA ---------------
 
@@ -28,12 +29,14 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   # ------------ INITIALIZE PARAMS ----------------
   
-  z <- matrix(NA_real_, nrow = num_obs_train, ncol = K)
+  z <- matrix(NA_real_, nrow = num_obs_train, ncol = K) 
   mu_z <- rep(0, K)
   Sigma <- diag(K) # set Sigma to identity matrix
   
-  # initialize latent variables from standard mv normal
-  z <- mvrnorm(num_obs_train, mu = mu_z, Sigma = Sigma)
+  z <- mvrnorm(num_obs_train, mu = mu_z, Sigma = Sigma) # initialize latent variables from standard mv normal
+  
+  nu_prior <- K + 1 # prior d.o.f inv-Wishart
+  scalematr_prior <- nu_prior * diag(K)
   
   # initialize each sum-of-trees model with 'num_trees' single node trees + what to do with leaf node params
   
@@ -65,10 +68,12 @@ soft_mpbart <- function(y_train, # training data - outcomes
     }
     
     # sample unconstrained Sigma from inverted-Wishart
-    Sigma_star <- 
+    nu_posterior <- nu_prior + num_obs_train
+    scalematr_posterior <- scalematr_prior + #RSS treemodel
+    Sigma_star <- riwish(nu_posterior, scalematr_posterior)
     
     # scale to force trace restriction
-    Sigma <- (K / sum(diag(Sigma_star)))
+    Sigma <- (K / sum(diag(Sigma_star))) * Sigma_star
     
     
     # save draws if after burn-in
