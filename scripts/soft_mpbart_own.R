@@ -59,9 +59,14 @@ glass_data <- read.csv('C:\Users\matth\OneDrive\Bureaublad\msc_thesis\Data\glass
 glass_y <- glass_data[[ncol(glass_data)]]
 glass_X <- as.matrix(glass_data[, 2:(ncol(glass_data)-1)])
 
+vertebral_data <- read.csv('C:\Users\matth\OneDrive\Bureaublad\msc_thesis\Data\vertebral\data.txt', header = FALSE)
+vertebral_y <- glass_data[[ncol(glass_data)]]
+vertebral_X <- as.matrix(glass_data[, 1:(ncol(glass_data)-1)])
+
 
 # ------------ PREPROCESS DATA -------------
 
+# glass
 # clean the class labels such that they fall in the range [0,5]
 # there is no class 4 in the data set
 for (i in 1:length(glass_y)) {
@@ -69,6 +74,18 @@ for (i in 1:length(glass_y)) {
     glass_y[i] <- glass_y[i] - 1
   } else {
     glass_y[i] <- glass_y[i] - 2
+  }
+}
+
+# vertebral
+# change class labels to 0 = Hernia, 1 = Spondylolisthesis, 2 = Normal
+for (i in 1:length(vertebral_y)) {
+  if (vertebral_y[i] == "Hernia") {
+    vertebral_y[i] <- 0
+  } else if (vertebral_y[i] == "Spondylolisthesis") {
+    vertebral_y[i] <- 1
+  } else {
+    vertebral_y[i] <- 2
   }
 }
 
@@ -155,8 +172,8 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   # initialize lists and matrices to store draws, predictions and errors
   z_draws <- vector("list", num_sim)
-  train_z_preds <- matrix(NA_real_, num_obs_train, K)
-  test_z_preds <- matrix(NA_real_, num_obs_test, K)
+  train_z_preds <- matrix(NA_real_, num_obs_train, K) # maybe remove
+  test_z_preds <- matrix(NA_real_, num_obs_test, K) # maybe remove
   errors <- matrix(NA_real_, num_obs_train, K)
   
   # Gibbs sampler
@@ -196,23 +213,30 @@ soft_mpbart <- function(y_train, # training data - outcomes
       
        # sample all trees, leaf node params and tau via softBART package
        
-      # predict k'th component of z
+      # predict k'th component of z (training data)
       predictions_z_k <- t(tree_samplers[[k]]$do_gibbs(X_train, z[,k], X_train, i = 1)) # returns predictions for all training obs of k'th component
       
-      # compute errors and store predictions
+      # compute errors 
       errors[,k] <- z[,k] - predictions_z_k
-      train_z_preds[,k] <- predictions_z_k
+      
+      # update k'th component of mu_z????
+      mu_z[k] <- mean(predictions_z_k)
+      
+      # predict test data using the current sum-of-trees model? Save the predictions after burnin?
+      
+       # sample splitting probabilities from Dirichlet ? How to get alpha
+      predictor_counts <- tree_samplers[[k]]$get_tree_counts() # OR USE get_counts(), returns it for the whole forest, not per tree
       
       
       
-       # sample splitting probabilities from Dirichlet, should also come out of softBART
-      
+      tree_samplers[[k]]$set_s(s)
       
     }
     
     # sample unconstrained Sigma from inverted-Wishart
     nu_posterior <- nu_prior + num_obs_train
-    scalematr_posterior <- scalematr_prior + #RSS treemodel
+    rss <- t(errors) %*% errors
+    scalematr_posterior <- scalematr_prior + rss
     Sigma_star <- riwish(nu_posterior, scalematr_posterior)
     
     # scale to force trace restriction
@@ -224,11 +248,12 @@ soft_mpbart <- function(y_train, # training data - outcomes
       z_draws[[iter - num_burnin]] <- z
     }
     
-  }
+  } # end of sampler
   
-  
-  
+  # return MCMC output
+  return(z_draws)
 }
+
 
 
   
