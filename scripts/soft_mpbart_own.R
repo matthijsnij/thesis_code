@@ -144,32 +144,22 @@ soft_mpbart <- function(y_train, # training data - outcomes
   nu_prior <- K + 1 # prior d.o.f inv-Wishart
   scalematr_prior <- nu_prior * diag(K)
   
-  # initialize each sum-of-trees model with 'num_trees' single node trees + what to do with leaf node params
+  # create parameters and tree samplers for softBART
+  hypers <- vector("list", K)
   
-  # parameters for softBART
-  hypers <- Hypers(X = X_train, 
-                   y = y_train, 
-                   alpha = alpha, 
-                   beta = beta, 
-                   gamma = gamma, 
-                   k = e, 
-                   sigma_hat = sigma_hat,
-                   shape = shape, 
-                   width = width,
-                   num_tree = num_trees,
-                   alpha_scale = alpha_scale,
-                   alpha_shape_1 = alpha_shape_1,
-                   alpha_shape_2 = alpha_shape_2,
-                   tau_rate = tau_rate
-  )
+  tree_samplers <- vector("list", K)
   
-
+  opts <- Opts(update_sigma = FALSE, num_print = n.burnin + n.iter + 1) # directly from soft surbart, still check if want same settings
+  
   # ------- MCMC --------
   
-  # initialize lists to store draws
+  # initialize lists and matrices to store draws, predictions and errors
   z_draws <- vector("list", num_sim)
+  train_z_preds <- matrix(NA_real_, num_obs_train, K)
+  test_z_preds <- matrix(NA_real_, num_obs_test, K)
+  errors <- matrix(NA_real_, num_obs_train, K)
   
-  
+  # Gibbs sampler
   for (iter in 1:num_burnin+num_sim) {
     
     # sample latent variables from truncated multivariate normal
@@ -177,13 +167,42 @@ soft_mpbart <- function(y_train, # training data - outcomes
       sample_latent_variables(mu = mu_z, Sigma = Sigma, y_i = y_train[i], K = K)
     }))
     
+    # check if correct dimension
+    if (iter == 1){
+      print(dim(z))
+    }
+    
     for (k in 1:K) {
       
+      # update hyperparameters
+      hypers[[k]] <- Hypers(X = X_train, 
+                            y = z[,k], # should be z
+                            alpha = alpha, 
+                            beta = beta, 
+                            gamma = gamma, 
+                            k = e, 
+                            sigma_hat = sigma_hat,
+                            shape = shape, 
+                            width = width,
+                            num_tree = num_trees,
+                            alpha_scale = alpha_scale,
+                            alpha_shape_1 = alpha_shape_1,
+                            alpha_shape_2 = alpha_shape_2,
+                            tau_rate = tau_rate
+      )
+      
+      # create samplers
+      tree_samplers[[k]] <- MakeForest(hypers = hypers[[k]], opts = , warn = FALSE)
+      
        # sample all trees, leaf node params and tau via softBART package
-       for (j in 1:num_trees) {
-         
-         
-       }
+       
+      # predict k'th component of z
+      predictions_z_k <- t(tree_samplers[[k]]$do_gibbs(X_train, z[,k], X_train, i = 1)) # returns predictions for all training obs of k'th component
+      
+      # compute errors and store predictions
+      errors[,k] <- z[,k] - predictions_z_k
+      train_z_preds[,k] <- predictions_z_k
+      
       
       
        # sample splitting probabilities from Dirichlet, should also come out of softBART
