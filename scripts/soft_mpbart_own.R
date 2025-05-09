@@ -143,6 +143,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
   # set some values
   num_obs_train = length(y_train)
   num_obs_test = length(y_test)
+  p <- ncol(X_train)
   
   # set seed for reproduceability
   if (is.null(seed)) {
@@ -166,7 +167,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   tree_samplers <- vector("list", K)
   
-  opts <- Opts(update_sigma = FALSE, num_print = n.burnin + n.iter + 1) # directly from soft surbart, still check if want same settings
+  opts <- Opts(update_sigma = FALSE, update_s = TRUE, num_print = n.burnin + n.iter + 1) # directly from soft surbart, still check if want same settings
   
   # ------- MCMC --------
   
@@ -189,6 +190,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
       print(dim(z))
     }
     
+    # sample all tree model related parameters using softBART package
     for (k in 1:K) {
       
       # update hyperparameters
@@ -208,10 +210,8 @@ soft_mpbart <- function(y_train, # training data - outcomes
                             tau_rate = tau_rate
       )
       
-      # create samplers
-      tree_samplers[[k]] <- MakeForest(hypers = hypers[[k]], opts = , warn = FALSE)
-      
-       # sample all trees, leaf node params and tau via softBART package
+      # create sampler
+      tree_samplers[[k]] <- MakeForest(hypers = hypers[[k]], opts = opts, warn = FALSE) # check warn
        
       # predict k'th component of z (training data)
       predictions_z_k <- t(tree_samplers[[k]]$do_gibbs(X_train, z[,k], X_train, i = 1)) # returns predictions for all training obs of k'th component
@@ -224,11 +224,8 @@ soft_mpbart <- function(y_train, # training data - outcomes
       
       # predict test data using the current sum-of-trees model? Save the predictions after burnin?
       
-       # sample splitting probabilities from Dirichlet ? How to get alpha
+       # sample splitting probabilities from Dirichlet ? How to get alpha !! Believe this can be done through Opts, so lines can prob be removed
       predictor_counts <- tree_samplers[[k]]$get_tree_counts() # OR USE get_counts(), returns it for the whole forest, not per tree
-      
-      
-      
       tree_samplers[[k]]$set_s(s)
       
     }
