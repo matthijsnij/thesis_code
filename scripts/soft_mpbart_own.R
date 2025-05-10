@@ -8,6 +8,20 @@ library(MCMCpack)
 library(TruncatedNormal)
 library(SoftBart)
 
+# ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
+
+#'@description applies rank normalization to a matrix of doubles 
+#'
+#'@param X matrix of doubles
+#'@return Normalized matrix of doubles
+rank_normalize <- function(X) {
+  apply(X, 2, function(col) {
+    ranks <- rank(col, ties.method = "average")
+    (ranks - 1) / (length(ranks) - 1)  # maps to [0, 1]
+  })
+}
+
+
 # ---------------- FUNCTION TO SAMPLE LATENT VARIABLES FROM TRUNCATED MULTIVARIATE NORMAL ---------------------
 
 #'@description Function to sample latent variables from truncated multivariate normal distribution (TMVN)
@@ -58,10 +72,12 @@ sample_latent_variables <- function(mu, # mean vector Kx1
 glass_data <- read.csv('C:\Users\matth\OneDrive\Bureaublad\msc_thesis\Data\glass\glass.data', header = FALSE)
 glass_y <- glass_data[[ncol(glass_data)]]
 glass_X <- as.matrix(glass_data[, 2:(ncol(glass_data)-1)])
+glass_X_norm <- rank_normalize(glass_X)
 
 vertebral_data <- read.csv('C:\Users\matth\OneDrive\Bureaublad\msc_thesis\Data\vertebral\data.txt', header = FALSE)
 vertebral_y <- glass_data[[ncol(glass_data)]]
 vertebral_X <- as.matrix(glass_data[, 1:(ncol(glass_data)-1)])
+vertebral_X_norm <- rank_normalize(vertebral_X)
 
 
 # ------------ PREPROCESS DATA -------------
@@ -98,9 +114,9 @@ folds <- createFolds(glass_y, k = num_folds, list = TRUE, returnTrain = TRUE)
 
 # split the data based on these indices
 glass_y_train <- glass_y[folds[[1]]]
-glass_X_train <- glass_X[folds[[1]], ]
+glass_X_train <- glass_X_norm[folds[[1]], ]
 glass_y_test <- glass_y[-folds[[1]]]
-glass_X_test <- glass_X[-folds[[1]], ]
+glass_X_test <- glass_X_norm[-folds[[1]], ]
 
 # ------------- SOFT MPBART FUNCTION -----------------
 
@@ -137,7 +153,6 @@ soft_mpbart <- function(y_train, # training data - outcomes
                         alpha_shape_1 = 0.5, # shape 1 of hyperprior on alpha
                         alpha_shape_2 = 1, # shape 2 of hyperprior on alpha
                         tau_rate = 10, # rate of exponential prior on bandwidth parameters tau
-                        normalize_Y #?????
                         ) {
   
   # set some values
@@ -154,28 +169,47 @@ soft_mpbart <- function(y_train, # training data - outcomes
   # ------------ INITIALIZE PARAMS ----------------
   
   z <- matrix(NA_real_, nrow = num_obs_train, ncol = K) 
-  mu_z <- rep(0, K)
+  mu_z <- rep(0, K) #?
   Sigma <- diag(K) # set Sigma to identity matrix
-  
-  z <- mvrnorm(num_obs_train, mu = mu_z, Sigma = Sigma) # initialize latent variables from standard mv normal # remove?
   
   nu_prior <- K + 1 # prior d.o.f inv-Wishart
   scalematr_prior <- nu_prior * diag(K)
   
-  # create parameters and tree samplers for softBART
+  # create parameters and tree samplers for softBART, and # initialize lists and matrices to store draws, predictions and errors
   hypers <- vector("list", K)
-  
   tree_samplers <- vector("list", K)
+  predictions_z <- matrix(NA_real_, nrow = num_obs_train, ncol = K)
   
-  opts <- Opts(update_sigma = FALSE, update_s = TRUE, num_print = n.burnin + n.iter + 1) # directly from soft surbart, still check if want same settings
+  for (k in 1:K) {
+    hypers[[k]] <- Hypers(X = X_train, # not used, does not matter 
+                          y = y_train, # not used, does not matter
+                          alpha = alpha, 
+                          beta = beta, 
+                          gamma = gamma, 
+                          k = e, 
+                          sigma_hat = sigma_hat,
+                          shape = shape, 
+                          width = width,
+                          num_tree = num_trees,
+                          alpha_scale = alpha_scale,
+                          alpha_shape_1 = alpha_shape_1,
+                          alpha_shape_2 = alpha_shape_2,
+                          tau_rate = tau_rate
+    )
+    
+    tree_samplers[[k]] <- MakeForest(hypers = hypers[[k]], opts = opts, warn = FALSE)
+    
+    # initialize predictions for latent variables
+    predictions_z_train[,k] <- tree_samplers[[k]]$do_predict(X_train)
+  }
+  
+  z_draws <- vector("list", num_sim)
+  test_z_preds <- matrix(NA_real_, num_obs_test, K) # maybe remove, or maybe not
+  errors <- matrix(NA_real_, num_obs_train, K)
+  
+  opts <- Opts(update_sigma = FALSE, num_print = n.burnin + n.iter + 1) # check settings
   
   # ------- MCMC --------
-  
-  # initialize lists and matrices to store draws, predictions and errors
-  z_draws <- vector("list", num_sim)
-  train_z_preds <- matrix(NA_real_, num_obs_train, K) # maybe remove
-  test_z_preds <- matrix(NA_real_, num_obs_test, K) # maybe remove
-  errors <- matrix(NA_real_, num_obs_train, K)
   
   # Gibbs sampler
   for (iter in 1:num_burnin+num_sim) {
@@ -193,41 +227,21 @@ soft_mpbart <- function(y_train, # training data - outcomes
     # sample all tree model related parameters using softBART package
     for (k in 1:K) {
       
-      # update hyperparameters
-      hypers[[k]] <- Hypers(X = X_train, 
-                            y = z[,k], # should be z
-                            alpha = alpha, 
-                            beta = beta, 
-                            gamma = gamma, 
-                            k = e, 
-                            sigma_hat = sigma_hat,
-                            shape = shape, 
-                            width = width,
-                            num_tree = num_trees,
-                            alpha_scale = alpha_scale,
-                            alpha_shape_1 = alpha_shape_1,
-                            alpha_shape_2 = alpha_shape_2,
-                            tau_rate = tau_rate
-      )
+      # compute input z for tree sampler (requires initial predictions?)
+      temp_z <- z[,k] - t((t(Sigma[-k,k]) %*% solve(Sigma[-k,-k])) %*% t(z[,-k] - predictions_z_train[,-k]))
       
-      # create sampler
-      tree_samplers[[k]] <- MakeForest(hypers = hypers[[k]], opts = opts, warn = FALSE) # check warn
+      #sampler.list[[k]]$set_sigma(sqrt(Sigma_mat[k,k] - Sigma_mat[k,-k]%*%(solve(Sigma_mat[-k,-k]) %*% Sigma_mat[-k,k] ))  ) #????? maybe remove
        
       # predict k'th component of z (training data)
-      predictions_z_k <- t(tree_samplers[[k]]$do_gibbs(X_train, z[,k], X_train, i = 1)) # returns predictions for all training obs of k'th component
+      mu_train <- t(tree_samplers[[k]]$do_gibbs(X_train, temp_z, X_train, i = 1)) # returns predictions for all training obs of k'th component
       
       # compute errors 
-      errors[,k] <- z[,k] - predictions_z_k
+      errors[,k] <- z[,k] - mu_train
       
       # update k'th component of mu_z????
       mu_z[k] <- mean(predictions_z_k)
       
-      # predict test data using the current sum-of-trees model? Save the predictions after burnin?
-      
-       # sample splitting probabilities from Dirichlet ? How to get alpha !! Believe this can be done through Opts, so lines can prob be removed
-      predictor_counts <- tree_samplers[[k]]$get_tree_counts() # OR USE get_counts(), returns it for the whole forest, not per tree
-      tree_samplers[[k]]$set_s(s)
-      
+      predictions_z_train[,k] <- mu_train # save predictions
     }
     
     # sample unconstrained Sigma from inverted-Wishart
