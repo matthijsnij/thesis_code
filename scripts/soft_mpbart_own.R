@@ -126,7 +126,8 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   hypers <- vector("list", K) # to store hyperparams for softBART models
   tree_samplers <- vector("list", K) # to store softBART models
-  predictions_z_train <- matrix(NA_real_, nrow = num_obs_train, ncol = K) # to store training predictions of latent variables (store/resample?)
+  predictions_z_train <- matrix(NA_real_, nrow = num_obs_train, ncol = K) # to store training predictions of latent variables (re-generated each iteration)
+  predictions_z_test <- matrix(NA_real_, nrow = num_obs_test, ncol = K) # to store test predictions of latent variables (re-generated each iteration)
   
   for (k in 1:K) {
     hypers[[k]] <- Hypers(X = X_train, # not used, does not matter 
@@ -151,9 +152,12 @@ soft_mpbart <- function(y_train, # training data - outcomes
     predictions_z_train[,k] <- tree_samplers[[k]]$do_predict(X_train)
   }
   
-  z_draws <- vector("list", num_sim) # to store MCMC draws
-  test_z_preds <- matrix(NA_real_, num_obs_test, K) # maybe remove, or maybe not
-  errors <- matrix(NA_real_, num_obs_train, K) # to store errors
+  z_draws <- array(NA, dim = c(num_sim, num_obs_train, K)) # to store MCMC draws of latent variables
+  mu_train_draws <- array(NA, dim = c(num_sim, num_obs_train, K)) # to store MCMC draws of training predictions
+  mu_test_draws <- array(NA, dim = c(num_sim, num_obs_test, K)) # to store MCMC draws of test predictions
+  Sigma_draws <- array(NA, dim = c(num_sim, K, K)) # to store MCMC draws of Sigma
+  
+  errors <- matrix(NA_real_, num_obs_train, K) # to store errors (recalculated each iteration)
   
   opts <- Opts(num_print = num_burnin + num_sim + 1)
   
@@ -180,7 +184,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
     # sample all tree model related parameters using softBART package, and generate predictions
     for (k in 1:K) {
       
-      # compute input z for tree sampler (requires initial predictions?)
+      # compute input z for tree sampler
       temp_z <- z[, k] - (z[, -k] - predictions_z_train[, -k]) %*% solve(Sigma[-k, -k], Sigma[-k, k])
       
       #sampler.list[[k]]$set_sigma(sqrt(Sigma_mat[k,k] - Sigma_mat[k,-k]%*%(solve(Sigma_mat[-k,-k]) %*% Sigma_mat[-k,k] ))  ) #????? maybe remove
@@ -193,6 +197,10 @@ soft_mpbart <- function(y_train, # training data - outcomes
       
       # save predictions
       predictions_z_train[,k] <- mu_train 
+      
+      # generate test predictions for test observations and store them
+      mu_test <- tree_samplers[[k]]$do_predict(X_test)
+      predictions_z_test[, k] <- mu_test
     }
     
     # sample unconstrained Sigma from inverted-Wishart
@@ -206,7 +214,12 @@ soft_mpbart <- function(y_train, # training data - outcomes
     
     # save draws if after burn-in
     if (iter > num_burnin) {
-      z_draws[[iter - num_burnin]] <- z
+      iter_min_burnin <- iter - num_burnin
+      
+      z_draws[iter_min_burnin,,] <- z
+      mu_train_draws[iter_min_burnin,,] <- predictions_z_train
+      mu_test_draws[iter_min_burnin,,] <- predictions_z_test
+      Sigma_draws[iter_min_burnin,,] <- Sigma
     }
     
     # update progress bar
