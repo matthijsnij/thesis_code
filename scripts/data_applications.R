@@ -3,7 +3,13 @@
 # --------- READ DATA ----------
 
 # read preprocessed, ready-to-use data
+glass <- read.csv("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", header = TRUE)
+glass_y <- glass[[ncol(glass)]]
+glass_X <- glass[, 1:ncol(glass) - 1]
 
+vertebral <- read.csv("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", header = TRUE)
+vertebral_y <- vertebral[[ncol(vertebral)]]
+vertebral_X <- vertebral[, 1:ncol(vertebral) - 1]
 
 # ------------ CREATE TRAIN AND TEST SETS
 
