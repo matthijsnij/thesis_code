@@ -54,3 +54,6 @@ for (i in 1:length(vertebral_y)) {
 # normalize covariates
 vertebral_X_norm <- rank_normalize(vertebral_X)
 
+
+# --------- SAVE PREPROCESSED DATA SETS -------------
+
