@@ -15,11 +15,11 @@ rank_normalize <- function(X) {
 
 # ------------ READ DATA ---------------
 
-glass_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/glass/glass.data', header = FALSE)
+glass_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/glass/glass.data', header = TRUE)
 glass_y <- glass_data[[ncol(glass_data)]]
 glass_X <- as.matrix(glass_data[, 2:(ncol(glass_data)-1)])
 
-vertebral_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/vertebral/data.txt', header = FALSE)
+vertebral_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/vertebral/data.txt', header = TRUE)
 vertebral_y <- vertebral_data[[ncol(vertebral_data)]]
 vertebral_X <- as.matrix(vertebral_data[, 1:(ncol(vertebral_data)-1)])
 
@@ -56,8 +56,8 @@ vertebral_X_norm <- rank_normalize(vertebral_X)
 
 
 # --------- SAVE PREPROCESSED DATA SETS -------------
-write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = FALSE, quote = FALSE)
-write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", sep = ",", row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 
