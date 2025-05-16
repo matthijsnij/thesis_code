@@ -94,7 +94,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
                         beta = 2, # branching process prior - penalize depth
                         gamma = 0.95, # branching process prior - penalize new nodes
                         e = 2, # leaf node param prior - controls prior variance
-                        sigma_hat = NULL, #????
+                        sigma_hat = NULL, # initial guess, will be estimated via simple linear regression
                         shape = 1, # shape parameter of gating probabilities????
                         width = 0.1, # bandwidth of gating probabilities
                         alpha_scale = NULL, # scale of hyperprior on alpha
@@ -176,18 +176,14 @@ soft_mpbart <- function(y_train, # training data - outcomes
       sample_latent_variables(mu = colMeans(predictions_z_train), Sigma = Sigma, y_i = y_train[i], K = K)
     }))
     
-    # check if correct dimension
-    if (iter == 1){
-      print(dim(z))
-    }
-    
     # sample all tree model related parameters using softBART package, and generate predictions
     for (k in 1:K) {
       
       # compute input z for tree sampler
       temp_z <- z[, k] - (z[, -k] - predictions_z_train[, -k]) %*% solve(Sigma[-k, -k], Sigma[-k, k])
       
-      #sampler.list[[k]]$set_sigma(sqrt(Sigma_mat[k,k] - Sigma_mat[k,-k]%*%(solve(Sigma_mat[-k,-k]) %*% Sigma_mat[-k,k] ))  ) #????? maybe remove
+      # update sigma of the tree model
+      tree_samplers[[k]]$set_sigma(sqrt(Sigma[k,k] - Sigma[k,-k]%*%(solve(Sigma[-k,-k]) %*% Sigma[-k,k]))) 
       
       # predict k'th component of z (training data)
       mu_train <- t(tree_samplers[[k]]$do_gibbs(X_train, temp_z, X_train, i = 1)) # returns predictions for all training obs of k'th component
@@ -236,7 +232,14 @@ soft_mpbart <- function(y_train, # training data - outcomes
   cat("\nGibbs sampling finished.\n")
   
   # return MCMC output
-  return(z_draws)
+  return_list <- list()
+  
+  return_list$z_draws <- z_draws
+  return_list$mu_train_draws <- mu_train_draws
+  return_list$mu_test_draws <- mu_test_draws
+  return_list$Sigma_draws <- Sigma_draws
+  
+  return(return_list)
 }
 
 
