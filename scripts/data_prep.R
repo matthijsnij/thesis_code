@@ -25,7 +25,7 @@ vertebral_X <- as.matrix(vertebral_data[, 1:(ncol(vertebral_data)-1)])
 
 # ------------ PREPROCESS DATA -------------
 
-# ---- GLASS -----
+# -- GLASS --
 # clean the class labels such that they fall in the range [0,5]
 # there is no class 4 in the data set
 for (i in 1:length(glass_y)) {
@@ -39,7 +39,7 @@ for (i in 1:length(glass_y)) {
 # normalize covariates
 glass_X_norm <- rank_normalize(glass_X)
 
-# ---- VERTEBRAL -----
+# -- VERTEBRAL --
 # change class labels to 0 = Hernia, 1 = Spondylolisthesis, 2 = Normal
 for (i in 1:length(vertebral_y)) {
   if (vertebral_y[i] == "Hernia") {
