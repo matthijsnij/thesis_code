@@ -280,6 +280,16 @@ soft_mpbart_predict <- function(predictions_z) {
   return(return_list)
 }
 
+# ------ TEST ERROR RATE FUNCTION -------
+
+#'@description Function to compute test error rate
+#'
+#'@param y_actual Observed class labels of the test set
+#'@param y_pred Predicted class labels of the test set
+test_error_rate <- function(y_actual, y_pred) {
+  return(mean(y_actual != y_pred))
+}
+
 
 
 
