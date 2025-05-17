@@ -65,7 +65,11 @@ sample_latent_variables <- function(mu, # mean vector Kx1
 #'@param num_trees Number of trees used in each sum-of-trees model
 #'@param K Number of class labels - 1 (dimension of latent vector)
 #'@param seed Seed used for controlling randomness
-#'
+#'@return The following objects are returned:
+#' \item{z_draws}{MCMC draws of latent variables from truncated normals for training observations}
+#' \item{mu_train_draws}{MCMC draws of predictions of latent variables for training observations}
+#' \item{mu_test_draws}{MCMC draws of predictions of latent variables for test observations}
+#' \item{Sigma_draws}{MCMC draws of Sigma}
 soft_mpbart <- function(y_train, # training data - outcomes
                         X_train, # training data - covariates
                         y_test, # test data - outcomes
@@ -145,7 +149,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   errors <- matrix(NA_real_, num_obs_train, K) # to store errors (recalculated each iteration)
   
-  opts <- Opts(num_print = num_burnin + num_sim + 1)
+  opts <- Opts(num_print = num_burnin + num_sim + 1) # no need to print here, rest are default settings
   
   # ------- MCMC --------
   
@@ -172,7 +176,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
       tree_samplers[[k]]$set_sigma(sqrt(Sigma[k,k] - Sigma[k,-k]%*%(solve(Sigma[-k,-k]) %*% Sigma[-k,k]))) 
       
       # predict k'th component of z (training data)
-      mu_train <- t(tree_samplers[[k]]$do_gibbs(X_train, temp_z, X_train, i = 1)) # returns predictions for all training obs of k'th component
+      mu_train <- t(tree_samplers[[k]]$do_gibbs(X_train, temp_z, X_train, i = 1)) 
       
       # compute errors 
       errors[,k] <- z[,k] - mu_train
@@ -228,7 +232,53 @@ soft_mpbart <- function(y_train, # training data - outcomes
   return(return_list)
 }
 
+# -------- FUNCTION TO GET POSTERIOR CLASS PROBABILITIES AND PREDICT REPONSES ----------
 
+#'@description Function to compute posterior class probabilities and generate predictions for the response.
+#' Assumes 0-based class indexing where 0 is the reference class.
+#'
+#'@param predictions_z 3D array of predicted latent variables from S-MPBART MCMC. Dimension (num_sim, num_obs, dim_z).
+#'@return The following objects:
+#'\item{post_probs}{Matrix of posterior class probabilities for each observation}
+#'\item{pred_y}{Vector of predicted classes for the response}
+soft_mpbart_predict <- function(predictions_z) {
+  
+  # extract dimensions
+  num_sim <- dim(predictions_z)[1]
+  num_obs <- dim(predictions_z)[2]
+  num_classes <- dim(predictions_z)[3] + 1 # add one as latent vector  has dimension (num_classes - 1)
+  
+  class_counts <- matrix(0, nrow = num_obs, ncol = num_classes)
+  
+  for (iter in 1:num_sim) {
+    pred_z_iter <- predictions_z[iter,,]
+    
+    # append reference category
+    pred_z_iter_full <- cbind(0, pred_z_iter)
+    
+    # predict response for all observations
+    pred_class <- apply(pred_z_iter_full, 1, which.max) - 1 # subtract one to go from 1-based to 0-based, as 0 is reference category.
+  
+    # update class counts
+    for (i in 1:num_obs) {
+      class_counts[i, pred_class[i] + 1] <- class_counts[i, pred_class[i] + 1] + 1
+    }
+  }
+  
+  # convert to posterior probabilities
+  post_probs <- class_counts / num_sim
+  colnames(post_probs) <- paste0("class_", 0:(n_classes - 1)) # add class labels
+  
+  # compute predicted class labels
+  pred_y <- max.col(post_probs) - 1 # 0-based class indexing so subtract one
+  
+  # return posterior probabilities and predicted class labels
+  return_list <- list()
+  return_list$post_probs <- post_probs
+  return_list$pred_y <- pred_y
+  
+  return(return_list)
+}
 
 
 
