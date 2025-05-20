@@ -49,20 +49,54 @@ sample_latent_variables <- function(mu, # mean vector Kx1
     # constraints z_j - z_{y_i} < 0 for j != y_i
     row <- 1
     for (j in 1:K) {
-      if (j != y_i) {
+      if (j == y_i) {
+        A[row, j] <- -1
+      } else {
         A[row, y_i] <- -1
         A[row, j] <- 1
-        row <- row + 1
       }
+      row <- row + 1
     }
-    # constraint maximum utility should be larger than 0, -z_{y_i} < 0
-    A[row, y_i] <- -1
-    b <- rep(0, nrow(A))
   }
   
   # sample and return
   z_i <- tmvtnorm::rtmvnorm(n = 1, mean = mu, sigma = Sigma, lower = rep(-Inf, K), upper = b, D = A, algorithm = "gibbs")
   return(drop(z_i))
+}
+
+# ------ FUNCTION TO SAFELY SAMPLE FROM INV-WISHART
+
+#'@description Function to sample from inverted-Wishart, avoiding singular scale matrix
+#'
+#'@param nu Posterior d.o.f.
+#'@param scale Posterior scale matrix (which might be singular due to numerical issues
+#'@param jitter_init Initial jitter factor
+#'@param jitter_mult Multiplier for jitter factor
+#'@param max_attempts Maximum number of jitter increases before stopping
+#'@return A draw from inverted-Wishart distribution
+safe_riwish <- function(nu, scale, jitter_init = 1e-8, jitter_mult = 10, max_attempts = 5) {
+  # check positive definiteness using eigenvalues
+  is_pos_def <- function(mat) {
+    all(eigen(mat, symmetric = TRUE, only.values = TRUE)$values > 0)
+  }
+  
+  jitter <- jitter_init
+  scale_jittered <- scale
+  
+  attempts <- 0
+  while (!is_pos_def(scale_jittered) && attempts < max_attempts) {
+    scale_jittered <- scale + jitter * diag(nrow(scale))
+    jitter <- jitter * jitter_mult
+    attempts <- attempts + 1
+  }
+  
+  if (!is_pos_def(scale_jittered)) {
+    stop("Scale matrix is not positive definite even after jittering.")
+  }
+  
+  # Now sample from inverse Wishart with guaranteed positive definite scale matrix
+  Sigma_star <- riwish(nu, scale_jittered)
+  return(Sigma_star)
 }
 
 # ------------- SOFT MPBART FUNCTION -----------------
@@ -86,7 +120,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
                         X_train, # training data - covariates
                         X_test, # test data - covariates
                         K, # number of outcome categories - 1 (dim of latent vector)
-                        seed, # seed used in set.seed to control randomness. If not passed, function will generate random seed
+                        seed = NULL, # seed used in set.seed to control randomness
                         # parameters
                         num_burnin = 1000, # number of burn-in iterations
                         num_sim = 1000, # number of simulation iterations (excl. burn-in)
@@ -105,16 +139,15 @@ soft_mpbart <- function(y_train, # training data - outcomes
                         quiet = FALSE # whether you want progress bar to show
 ) {
   
+  # set seed for reproduceability if passed
+  if (!is.null(seed)) {
+    set.seed(seed = seed)
+  }
+  
   # set some values
   num_obs_train = length(y_train)
   num_obs_test = nrow(X_test)
   p <- ncol(X_train)
-  
-  # set seed for reproduceability
-  if (is.null(seed)) {
-    seed <- as.integer(Sys.time()) %% .Machine$integer.max # pseudo-random seed if not provided
-  }
-  set.seed(seed = seed)
   
   # ------------ INITIALIZE PARAMS ----------------
   
@@ -127,8 +160,8 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   hypers <- vector("list", K) # to store hyperparams for softBART models
   tree_samplers <- vector("list", K) # to store softBART models
-  predictions_z_train <- matrix(NA_real_, nrow = num_obs_train, ncol = K) # to store training predictions of latent variables (re-generated each iteration)
-  predictions_z_test <- matrix(NA_real_, nrow = num_obs_test, ncol = K) # to store test predictions of latent variables (re-generated each iteration)
+  predictions_z_train <- matrix(0, nrow = num_obs_train, ncol = K) # to store training predictions of latent variables (re-generated each iteration)
+  predictions_z_test <- matrix(0, nrow = num_obs_test, ncol = K) # to store test predictions of latent variables (re-generated each iteration)
   
   opts <- Opts(num_print = num_burnin + num_sim + 1) # no need to print here, rest are default settings
   
@@ -160,7 +193,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
   mu_test_draws <- array(NA, dim = c(num_sim, num_obs_test, K)) # to store MCMC draws of test predictions
   Sigma_draws <- array(NA, dim = c(num_sim, K, K)) # to store MCMC draws of Sigma
   
-  errors <- matrix(NA_real_, num_obs_train, K) # to store errors (recalculated each iteration)
+  errors <- matrix(0, num_obs_train, K) # to store errors (recalculated each iteration)
   
   # ------- MCMC --------
   
@@ -170,11 +203,11 @@ soft_mpbart <- function(y_train, # training data - outcomes
   }
   
   # Gibbs sampler
-  for (iter in 1:num_burnin+num_sim) {
+  for (iter in 1:(num_burnin+num_sim)) {
     
     # sample latent variables from truncated multivariate normal
     z <- t(sapply(1:num_obs_train, function(i) {
-      sample_latent_variables(mu = colMeans(predictions_z_train), Sigma = Sigma, y_i = y_train[i], K = K)
+      sample_latent_variables(mu = predictions_z_train[i,], Sigma = Sigma, y_i = y_train[i], K = K)
     }))
     
     # sample all tree model related parameters using softBART package, and generate predictions
@@ -282,7 +315,7 @@ soft_mpbart_predict <- function(predictions_z) {
   
   # convert to posterior probabilities
   post_probs <- class_counts / num_sim
-  colnames(post_probs) <- paste0("class_", 0:(n_classes - 1)) # add class labels
+  colnames(post_probs) <- paste0("class_", 0:(num_classes - 1)) # add class labels
   
   # compute predicted class labels
   pred_y <- max.col(post_probs) - 1 # 0-based class indexing so subtract one
