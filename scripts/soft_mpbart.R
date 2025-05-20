@@ -4,8 +4,21 @@
 library(caret)
 library(MASS)
 library(MCMCpack)
-library(TruncatedNormal)
+library(tmvtnorm)
 library(SoftBart)
+
+# ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
+
+#'@description applies rank normalization to a matrix of doubles 
+#'
+#'@param X matrix of doubles
+#'@return Normalized matrix of doubles
+rank_normalize <- function(X) {
+  apply(X, 2, function(col) {
+    ranks <- rank(col, ties.method = "average")
+    (ranks - 1) / (length(ranks) - 1)  # maps to [0, 1]
+  })
+}
 
 # ---------------- FUNCTION TO SAMPLE LATENT VARIABLES FROM TRUNCATED MULTIVARIATE NORMAL ---------------------
 
@@ -29,7 +42,7 @@ sample_latent_variables <- function(mu, # mean vector Kx1
     b <- rep(0, K)
   } else {
     # create constraints
-    A <- matrix(NA_real_, nrow = K, ncol = K)
+    A <- matrix(0, nrow = K, ncol = K)
     b <- rep(0, K)
     
     # latent utility corresponding to observed y_i has to be larger then all others
@@ -48,7 +61,7 @@ sample_latent_variables <- function(mu, # mean vector Kx1
   }
   
   # sample and return
-  z_i <- rtmvnorm(n = 1, mu = mu, Sigma = Sigma, D = A, lower = rep(-Inf, K), upper = b)
+  z_i <- tmvtnorm::rtmvnorm(n = 1, mean = mu, sigma = Sigma, lower = rep(-Inf, K), upper = b, D = A, algorithm = "gibbs")
   return(drop(z_i))
 }
 
@@ -58,7 +71,6 @@ sample_latent_variables <- function(mu, # mean vector Kx1
 #'
 #'@param y_train Vector of training data - class labels
 #'@param X_train Matrix of training data - covariates
-#'@param y_test Vector of test data - class labels
 #'@param X_test Matrix of test data - covariates
 #'@param num_burnin Number of burn-in iterations for the sampler
 #'@param num_sim Number of simulation iterations for the sampler, excluding burn-in
@@ -72,13 +84,12 @@ sample_latent_variables <- function(mu, # mean vector Kx1
 #' \item{Sigma_draws}{MCMC draws of Sigma}
 soft_mpbart <- function(y_train, # training data - outcomes
                         X_train, # training data - covariates
-                        y_test, # test data - outcomes
                         X_test, # test data - covariates
                         K, # number of outcome categories - 1 (dim of latent vector)
                         seed, # seed used in set.seed to control randomness. If not passed, function will generate random seed
                         # parameters
-                        num_burnin = 5000, # number of burn-in iterations
-                        num_sim = 5000, # number of simulation iterations (excl. burn-in)
+                        num_burnin = 1000, # number of burn-in iterations
+                        num_sim = 1000, # number of simulation iterations (excl. burn-in)
                         num_trees = 200, # number of trees in the sum-of-trees model
                         alpha = 1, # controls sparsity in Dirichlet prior
                         beta = 2, # branching process prior - penalize depth
@@ -96,7 +107,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   # set some values
   num_obs_train = length(y_train)
-  num_obs_test = length(y_test)
+  num_obs_test = nrow(X_test)
   p <- ncol(X_train)
   
   # set seed for reproduceability
@@ -119,9 +130,11 @@ soft_mpbart <- function(y_train, # training data - outcomes
   predictions_z_train <- matrix(NA_real_, nrow = num_obs_train, ncol = K) # to store training predictions of latent variables (re-generated each iteration)
   predictions_z_test <- matrix(NA_real_, nrow = num_obs_test, ncol = K) # to store test predictions of latent variables (re-generated each iteration)
   
+  opts <- Opts(num_print = num_burnin + num_sim + 1) # no need to print here, rest are default settings
+  
   for (k in 1:K) {
     hypers[[k]] <- Hypers(X = X_train, # not used, does not matter 
-                          y = y_train, # not used, does not matter
+                          Y = y_train, # not used, does not matter
                           alpha = alpha, 
                           beta = beta, 
                           gamma = gamma, 
@@ -149,8 +162,6 @@ soft_mpbart <- function(y_train, # training data - outcomes
   
   errors <- matrix(NA_real_, num_obs_train, K) # to store errors (recalculated each iteration)
   
-  opts <- Opts(num_print = num_burnin + num_sim + 1) # no need to print here, rest are default settings
-  
   # ------- MCMC --------
   
   # track progress
@@ -170,10 +181,14 @@ soft_mpbart <- function(y_train, # training data - outcomes
     for (k in 1:K) {
       
       # compute input z for tree sampler
-      temp_z <- z[, k] - (z[, -k] - predictions_z_train[, -k]) %*% solve(Sigma[-k, -k], Sigma[-k, k])
+      temp_z <- z[, k] - (z[, -k, drop = FALSE] - predictions_z_train[, -k, drop = FALSE]) %*% 
+        solve(Sigma[-k, -k, drop = FALSE], Sigma[-k, k, drop = FALSE]
+      )
       
       # update sigma of the tree model
-      tree_samplers[[k]]$set_sigma(sqrt(Sigma[k,k] - Sigma[k,-k]%*%(solve(Sigma[-k,-k]) %*% Sigma[-k,k]))) 
+      tree_samplers[[k]]$set_sigma(
+        sqrt(Sigma[k, k] - Sigma[k, -k, drop = FALSE] %*% solve(Sigma[-k, -k, drop = FALSE]) %*% Sigma[-k, k, drop = FALSE])
+      )
       
       # predict k'th component of z (training data)
       mu_train <- t(tree_samplers[[k]]$do_gibbs(X_train, temp_z, X_train, i = 1)) 
@@ -210,7 +225,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
     
     # update progress bar
     if (!quiet) {
-      setTxtProgressBar(pb, i)
+      setTxtProgressBar(pb, iter)
     }
     
   } # end of sampler

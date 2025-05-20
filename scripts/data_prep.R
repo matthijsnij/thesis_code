@@ -1,17 +1,6 @@
 # Loading and preprocessing data sets for S-MPBART
 
-# ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
-
-#'@description applies rank normalization to a matrix of doubles 
-#'
-#'@param X matrix of doubles
-#'@return Normalized matrix of doubles
-rank_normalize <- function(X) {
-  apply(X, 2, function(col) {
-    ranks <- rank(col, ties.method = "average")
-    (ranks - 1) / (length(ranks) - 1)  # maps to [0, 1]
-  })
-}
+source("soft_mpbart.R")
 
 # ------------ READ DATA ---------------
 

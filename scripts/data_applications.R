@@ -1,5 +1,7 @@
 # Data application for S-MPBART
 
+source("soft_mpbart.R")
+
 # --------- READ DATA ----------
 
 # read preprocessed, ready-to-use data
