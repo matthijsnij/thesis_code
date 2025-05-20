@@ -210,6 +210,11 @@ soft_mpbart <- function(y_train, # training data - outcomes
       sample_latent_variables(mu = predictions_z_train[i,], Sigma = Sigma, y_i = y_train[i], K = K)
     }))
     
+    # check
+    #if(any(!is.finite(z))) {
+      #stop("Non-finite values found in latent variables z at iteration ", iter)
+    #}
+    
     # sample all tree model related parameters using softBART package, and generate predictions
     for (k in 1:K) {
       
@@ -240,8 +245,11 @@ soft_mpbart <- function(y_train, # training data - outcomes
     # sample unconstrained Sigma from inverted-Wishart
     nu_posterior <- nu_prior + num_obs_train
     rss <- t(errors) %*% errors
+    #if (any(is.na(rss)) || any(!is.finite(rss))) {
+      #stop("NA or infinite values detected in residual sum of squares matrix rss.")
+    #}
     scalematr_posterior <- scalematr_prior + rss
-    Sigma_star <- riwish(nu_posterior, scalematr_posterior)
+    Sigma_star <- safe_riwish(nu = nu_posterior, scale = scalematr_posterior)
     
     # scale to force trace restriction
     Sigma <- (K / sum(diag(Sigma_star))) * Sigma_star
