@@ -23,7 +23,7 @@ wave_y_test <- as.numeric(test_wave$classes) - 1 # convert to 0-based class labe
 mcmc_output <- soft_mpbart(y_train = wave_y_train,
                            X_train = wave_X_train,
                            X_test = wave_X_test,
-                           num_classes = 3,
+                           num_classes = 3
                            )
 
 # predict

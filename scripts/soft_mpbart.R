@@ -4,11 +4,8 @@
 library(caret)
 library(MASS)
 library(MCMCpack)
-library(tmvtnorm)
+library(tmvmixnorm)
 library(SoftBart)
-
-library(TruncatedNormal)
-args(TruncatedNormal::rtmvnorm)
 
 # ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
 
@@ -41,27 +38,29 @@ sample_latent_variables <- function(mu, # mean vector Kx1
   # case: y_i is the reference category
   if (y_i == 0) {
     # then all z_ik < 0 for k = 1,...,K
-    D <- diag(K)
-    lower <- rep(-Inf, K)
+    A <- diag(K)
+    lower <- rep(-20, K)
     upper <- rep(0, K)
   } else {
     # create constraints
-    A <- matrix(0, nrow = K - 1, ncol = K)
+    A <- matrix(0, nrow = K-1, ncol = K)
+    lower <- rep(-20, K-1)
+    upper <- rep(0, K-1)
+    
+    # latent utility corresponding to observed y_i has to be larger then all others
+    # constraints z_j - z_{y_i} < 0 for j != y_i
     row <- 1
     for (j in 1:K) {
-      if (y_i != j) {
+      if (j != y_i) {
         A[row, y_i] <- -1
         A[row, j] <- 1
         row <- row + 1
       }
     }
-    lower <- rep(-Inf, K)
-    upper <- c(rep(0, K - 1), Inf)
-    D <- rbind(A, rep(0, K))
   }
   
   # sample and return
-  z_i <- tmvtnorm::rtmvnorm(n = 1, mean = mu, sigma = Sigma, lower = lower, upper = upper, D = D, algorithm = "gibbs")
+  z_i <- tmvmixnorm::rtmvn(n = 1, Mean = mu, Sigma = Sigma, lower = lower, upper = upper, D = A)
   return(as.vector(z_i))
 }
 
@@ -70,7 +69,7 @@ sample_latent_variables <- function(mu, # mean vector Kx1
 #'@description Function to sample from inverted-Wishart, avoiding singular scale matrix
 #'
 #'@param nu Posterior d.o.f.
-#'@param scale Posterior scale matrix (which might be singular due to numerical issues
+#'@param scale Posterior scale matrix 
 #'@param jitter_init Initial jitter factor
 #'@param jitter_mult Multiplier for jitter factor
 #'@param max_attempts Maximum number of jitter increases before stopping
@@ -103,7 +102,7 @@ safe_riwish <- function(nu, scale, jitter_init = 1e-8, jitter_mult = 10, max_att
     stop("Scale matrix is not positive definite even after jittering.")
   }
   
-  # Now sample from inverse Wishart with guaranteed positive definite scale matrix
+  # sample from inverse Wishart
   Sigma_star <- riwish(nu, scale_jittered)
   return(Sigma_star)
 }
