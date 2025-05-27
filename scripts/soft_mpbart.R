@@ -7,6 +7,9 @@ library(MCMCpack)
 library(tmvtnorm)
 library(SoftBart)
 
+library(TruncatedNormal)
+args(TruncatedNormal::rtmvnorm)
+
 # ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
 
 #'@description applies rank normalization to a matrix of doubles 
@@ -38,30 +41,28 @@ sample_latent_variables <- function(mu, # mean vector Kx1
   # case: y_i is the reference category
   if (y_i == 0) {
     # then all z_ik < 0 for k = 1,...,K
-    A <- diag(K)
-    b <- rep(0, K)
+    D <- diag(K)
+    lower <- rep(-Inf, K)
+    upper <- rep(0, K)
   } else {
     # create constraints
-    A <- matrix(0, nrow = K, ncol = K)
-    b <- rep(0, K)
-    
-    # latent utility corresponding to observed y_i has to be larger then all others
-    # constraints z_j - z_{y_i} < 0 for j != y_i
+    A <- matrix(0, nrow = K - 1, ncol = K)
     row <- 1
     for (j in 1:K) {
-      if (j == y_i) {
-        A[row, j] <- -1
-      } else {
+      if (y_i != j) {
         A[row, y_i] <- -1
         A[row, j] <- 1
+        row <- row + 1
       }
-      row <- row + 1
     }
+    lower <- rep(-Inf, K)
+    upper <- c(rep(0, K - 1), Inf)
+    D <- rbind(A, rep(0, K))
   }
   
   # sample and return
-  z_i <- tmvtnorm::rtmvnorm(n = 1, mean = mu, sigma = Sigma, lower = rep(-Inf, K), upper = b, D = A, algorithm = "gibbs")
-  return(drop(z_i))
+  z_i <- tmvtnorm::rtmvnorm(n = 1, mean = mu, sigma = Sigma, lower = lower, upper = upper, D = D, algorithm = "gibbs")
+  return(as.vector(z_i))
 }
 
 # ------ FUNCTION TO SAFELY SAMPLE FROM INV-WISHART
@@ -75,17 +76,25 @@ sample_latent_variables <- function(mu, # mean vector Kx1
 #'@param max_attempts Maximum number of jitter increases before stopping
 #'@return A draw from inverted-Wishart distribution
 safe_riwish <- function(nu, scale, jitter_init = 1e-8, jitter_mult = 10, max_attempts = 5) {
-  # check positive definiteness using eigenvalues
+  # check 
+  if (any(!is.finite(scale))) stop("Scale has non-finite entries before jittering.")
+  if (any(is.na(scale))) stop("Scale has NA entries before jittering.")
+  
+  # check positive definiteness 
   is_pos_def <- function(mat) {
-    all(eigen(mat, symmetric = TRUE, only.values = TRUE)$values > 0)
+    tryCatch({
+      chol(mat)
+      TRUE
+    }, error = function(e) FALSE)
   }
   
   jitter <- jitter_init
   scale_jittered <- scale
+  diag_n <- diag(nrow(scale))
   
   attempts <- 0
   while (!is_pos_def(scale_jittered) && attempts < max_attempts) {
-    scale_jittered <- scale + jitter * diag(nrow(scale))
+    scale_jittered <- scale + jitter * diag_n
     jitter <- jitter * jitter_mult
     attempts <- attempts + 1
   }
@@ -119,7 +128,7 @@ safe_riwish <- function(nu, scale, jitter_init = 1e-8, jitter_mult = 10, max_att
 soft_mpbart <- function(y_train, # training data - outcomes
                         X_train, # training data - covariates
                         X_test, # test data - covariates
-                        K, # number of outcome categories - 1 (dim of latent vector)
+                        num_classes, # number of outcome classes
                         seed = NULL, # seed used in set.seed to control randomness
                         # parameters
                         num_burnin = 1000, # number of burn-in iterations
@@ -145,6 +154,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
   }
   
   # set some values
+  K <- num_classes - 1 # dimension latent vector
   num_obs_train = length(y_train)
   num_obs_test = nrow(X_test)
   p <- ncol(X_train)
@@ -205,15 +215,33 @@ soft_mpbart <- function(y_train, # training data - outcomes
   # Gibbs sampler
   for (iter in 1:(num_burnin+num_sim)) {
     
-    # sample latent variables from truncated multivariate normal
-    z <- t(sapply(1:num_obs_train, function(i) {
-      sample_latent_variables(mu = predictions_z_train[i,], Sigma = Sigma, y_i = y_train[i], K = K)
-    }))
+    if (any(!is.finite(Sigma)) || any(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values <= 1e-8)) {
+      stop(paste("Numerical issue with Sigma at iteration", iter))
+    }
     
-    # check
-    #if(any(!is.finite(z))) {
-      #stop("Non-finite values found in latent variables z at iteration ", iter)
-    #}
+    #predictions_z_train <- pmin(pmax(predictions_z_train, -20), 20)
+    
+    # sample latent variables from truncated multivariate normal
+    for (i in 1:num_obs_train) {
+      mu_i <- predictions_z_train[i, ]
+      
+      if (any(!is.finite(mu_i))) {
+        stop(paste("Non-finite mu at i =", i, "iter =", iter))
+      }
+      if (any(is.na(mu_i))) {
+        stop(paste("NA mu at i =", i, "iter =", iter))
+      }
+      
+      # clip extreme mu values to avoid numerical problems
+      #mu_i <- pmin(pmax(mu_i, -20), 20)
+      
+      z_i <- sample_latent_variables(mu = mu_i, Sigma = Sigma, y_i = y_train[i], K = K)
+      
+      if (any(!is.finite(z_i))) {
+        stop(paste("Non-finite z for observation", i, "at iteration", iter))
+      }
+      z[i, ] <- z_i
+    }
     
     # sample all tree model related parameters using softBART package, and generate predictions
     for (k in 1:K) {
@@ -232,6 +260,8 @@ soft_mpbart <- function(y_train, # training data - outcomes
       mu_train <- t(tree_samplers[[k]]$do_gibbs(X_train, temp_z, X_train, i = 1)) 
       
       # compute errors 
+      if (any(!is.finite(z[,k]))) stop(paste("Non-finite z in class", k, "at iteration", iter))
+      if (any(!is.finite(mu_train))) stop(paste("Non-finite mu_train in class", k, "at iteration", iter))
       errors[,k] <- z[,k] - mu_train
       
       # save predictions
@@ -244,11 +274,21 @@ soft_mpbart <- function(y_train, # training data - outcomes
     
     # sample unconstrained Sigma from inverted-Wishart
     nu_posterior <- nu_prior + num_obs_train
+    #errors <- pmin(pmax(errors, -20), 20) # clip errors to avoid instability
     rss <- t(errors) %*% errors
-    #if (any(is.na(rss)) || any(!is.finite(rss))) {
-      #stop("NA or infinite values detected in residual sum of squares matrix rss.")
-    #}
+    
+    if (any(!is.finite(errors))) stop("Non-finite errors at iteration ", iter)
+    if (any(!is.finite(rss))) stop("Non-finite RSS at iteration ", iter)
+    if (any(is.na(errors))) stop("Non-finite errors at iteration ", iter)
+    if (any(is.na(rss))) stop("Non-finite RSS at iteration ", iter)
+    
     scalematr_posterior <- scalematr_prior + rss
+    
+    eigvals <- eigen(scalematr_posterior, symmetric = TRUE, only.values = TRUE)$values
+    if (any(eigvals <= 0 | !is.finite(eigvals))) {
+      stop("scalematr_posterior not PD: ", paste(round(eigvals, 4), collapse = ", "))
+    }
+    
     Sigma_star <- safe_riwish(nu = nu_posterior, scale = scalematr_posterior)
     
     # scale to force trace restriction
