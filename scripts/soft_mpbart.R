@@ -43,9 +43,9 @@ sample_latent_variables <- function(mu, # mean vector Kx1
     upper <- rep(0, K)
   } else {
     # create constraints
-    A <- matrix(0, nrow = K-1, ncol = K)
-    lower <- rep(-20, K-1)
-    upper <- rep(0, K-1)
+    A <- matrix(0, nrow = K, ncol = K)
+    lower <- rep(-20, K)
+    upper <- rep(0, K)
     
     # latent utility corresponding to observed y_i has to be larger then all others
     # constraints z_j - z_{y_i} < 0 for j != y_i
@@ -57,11 +57,13 @@ sample_latent_variables <- function(mu, # mean vector Kx1
         row <- row + 1
       }
     }
+    # constraint -z_{y_i} < 0
+    A[row, y_i] <- -1
   }
   
   # sample and return
   z_i <- tmvmixnorm::rtmvn(n = 1, Mean = mu, Sigma = Sigma, lower = lower, upper = upper, D = A)
-  return(as.vector(z_i))
+  return(drop(z_i))
 }
 
 # ------ FUNCTION TO SAFELY SAMPLE FROM INV-WISHART
