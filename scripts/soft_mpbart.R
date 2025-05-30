@@ -387,6 +387,29 @@ test_error_rate <- function(y_actual, y_pred) {
   return(mean(y_actual != y_pred))
 }
 
+# ------ MULTICLASS BRIER SCORE FUNCTION ---------
+
+#'@description Function which computes the multiclass Brier score
+#'
+#'@param y_actual nx1 vector of observed class labels (0-based)
+#'@param y_prob nxK matrix of predicted posterior class probabilities
+#'@return The multiclass Brier score
+brier_score_multiclass <- function(y_actual, y_prob) {
+  
+  n <- length(y_actual)
+  K <- ncol(y_prob)
+  
+  # one-hot encode y_actual
+  y_onehot <- matrix(0, nrow = n, ncol = K)
+  for (i in 1:n) {
+    y_onehot[i, y_true[i] + 1] <- 1 # take 0-based class labeling into account
+  }
+  
+  # compute Brier score
+  score <- mean(rowSums((y_prob - y_onehot)^2))
+  return(score)
+}
+
 
 
 
