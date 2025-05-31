@@ -2,10 +2,12 @@
 
 # packages
 library(caret)
+library(coda)
 library(MASS)
 library(MCMCpack)
 library(tmvmixnorm)
 library(SoftBart)
+library(parallel)
 
 # ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
 
@@ -138,7 +140,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
                         alpha = 1, # controls sparsity in Dirichlet prior
                         beta = 2, # branching process prior - penalize depth
                         gamma = 0.95, # branching process prior - penalize new nodes
-                        e = 2, # leaf node param prior - controls prior variance
+                        e = (1/3), # leaf node param prior - controls prior variance
                         sigma_hat = NULL, # initial guess, will be estimated via simple linear regression
                         shape = 1, # shape parameter of gating probabilities????
                         width = 0.1, # bandwidth of gating probabilities
@@ -220,9 +222,6 @@ soft_mpbart <- function(y_train, # training data - outcomes
       stop(paste("Numerical issue with Sigma at iteration", iter))
     }
     
-    #predictions_z_train <- pmin(pmax(predictions_z_train, -20), 20)
-    
-    # sample latent variables from truncated multivariate normal
     for (i in 1:num_obs_train) {
       mu_i <- predictions_z_train[i, ]
       
@@ -232,9 +231,6 @@ soft_mpbart <- function(y_train, # training data - outcomes
       if (any(is.na(mu_i))) {
         stop(paste("NA mu at i =", i, "iter =", iter))
       }
-      
-      # clip extreme mu values to avoid numerical problems
-      #mu_i <- pmin(pmax(mu_i, -20), 20)
       
       z_i <- sample_latent_variables(mu = mu_i, Sigma = Sigma, y_i = y_train[i], K = K)
       
@@ -261,8 +257,6 @@ soft_mpbart <- function(y_train, # training data - outcomes
       mu_train <- t(tree_samplers[[k]]$do_gibbs(X_train, temp_z, X_train, i = 1)) 
       
       # compute errors 
-      if (any(!is.finite(z[,k]))) stop(paste("Non-finite z in class", k, "at iteration", iter))
-      if (any(!is.finite(mu_train))) stop(paste("Non-finite mu_train in class", k, "at iteration", iter))
       errors[,k] <- z[,k] - mu_train
       
       # save predictions
@@ -275,21 +269,12 @@ soft_mpbart <- function(y_train, # training data - outcomes
     
     # sample unconstrained Sigma from inverted-Wishart
     nu_posterior <- nu_prior + num_obs_train
-    #errors <- pmin(pmax(errors, -20), 20) # clip errors to avoid instability
     rss <- t(errors) %*% errors
     
     if (any(!is.finite(errors))) stop("Non-finite errors at iteration ", iter)
     if (any(!is.finite(rss))) stop("Non-finite RSS at iteration ", iter)
-    if (any(is.na(errors))) stop("Non-finite errors at iteration ", iter)
-    if (any(is.na(rss))) stop("Non-finite RSS at iteration ", iter)
     
     scalematr_posterior <- scalematr_prior + rss
-    
-    eigvals <- eigen(scalematr_posterior, symmetric = TRUE, only.values = TRUE)$values
-    if (any(eigvals <= 0 | !is.finite(eigvals))) {
-      stop("scalematr_posterior not PD: ", paste(round(eigvals, 4), collapse = ", "))
-    }
-    
     Sigma_star <- safe_riwish(nu = nu_posterior, scale = scalematr_posterior)
     
     # scale to force trace restriction
@@ -402,12 +387,40 @@ brier_score_multiclass <- function(y_actual, y_prob) {
   # one-hot encode y_actual
   y_onehot <- matrix(0, nrow = n, ncol = K)
   for (i in 1:n) {
-    y_onehot[i, y_true[i] + 1] <- 1 # take 0-based class labeling into account
+    y_onehot[i, y_actual[i] + 1] <- 1 # take 0-based class labeling into account
   }
   
   # compute Brier score
   score <- mean(rowSums((y_prob - y_onehot)^2))
   return(score)
+}
+
+# ------ GEWEKE TEST FUNCTION ---------
+geweke_test_z <- function(z_draws, n_check = 3) {
+  
+  n_iter <- dim(z_draws)[1]
+  n_obs  <- dim(z_draws)[2]
+  n_comp <- dim(z_draws)[3]
+  
+  obs_indices <- sample(1:n_obs, min(n_check, n_obs))
+  
+  for (obs in obs_indices) {
+    comp <- sample(1:n_comp, 1)
+    
+    trace <- z_draws[, obs, comp]
+    mcmc_trace <- mcmc(trace)
+    geweke_result <- geweke.diag(mcmc_trace)
+    z_score <- geweke_result$z
+    
+    cat(sprintf("Obs %d, Component %d --> Geweke z-score: %.4f\n", obs, comp, z_score))
+    
+    # plot trace and ACF
+    par(mfrow = c(1, 2))
+    plot(trace, type = "l", main = sprintf("Trace Plot\nObs %d, Comp %d", obs, comp), xlab = "Iteration", ylab = "Value")
+    acf(trace, main = "ACF")
+  }
+  
+  par(mfrow = c(1, 1))  # reset layout
 }
 
 
