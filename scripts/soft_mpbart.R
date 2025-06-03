@@ -7,7 +7,6 @@ library(MASS)
 library(MCMCpack)
 library(tmvmixnorm)
 library(SoftBart)
-library(parallel)
 library(Rfast)
 
 # ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
