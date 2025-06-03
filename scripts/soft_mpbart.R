@@ -8,6 +8,7 @@ library(MCMCpack)
 library(tmvmixnorm)
 library(SoftBart)
 library(parallel)
+library(Rfast)
 
 # ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
 
@@ -218,40 +219,26 @@ soft_mpbart <- function(y_train, # training data - outcomes
   # Gibbs sampler
   for (iter in 1:(num_burnin+num_sim)) {
     
-    #if (any(!is.finite(Sigma)) || any(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values <= 1e-8)) {
-      #stop(paste("Numerical issue with Sigma at iteration", iter))
-    #}
-    
+    # sample latent variables
     for (i in 1:num_obs_train) {
       mu_i <- predictions_z_train[i, ]
-      
-      #if (any(!is.finite(mu_i))) {
-        #stop(paste("Non-finite mu at i =", i, "iter =", iter))
-      #}
-      #if (any(is.na(mu_i))) {
-        #stop(paste("NA mu at i =", i, "iter =", iter))
-      #}
-      
       z_i <- sample_latent_variables(mu = mu_i, Sigma = Sigma, y_i = y_train[i], K = K)
-      
-      #if (any(!is.finite(z_i))) {
-        #stop(paste("Non-finite z for observation", i, "at iteration", iter))
-      #}
       z[i, ] <- z_i
     }
     
     # sample all tree model related parameters using softBART package, and generate predictions
     for (k in 1:K) {
       
-      # compute input z for tree sampler
-      temp_z <- z[, k] - (z[, -k, drop = FALSE] - predictions_z_train[, -k, drop = FALSE]) %*% 
-        solve(Sigma[-k, -k, drop = FALSE], Sigma[-k, k, drop = FALSE]
+      # compute input z for tree models
+      # solve linear system using Rfast
+      temp_z <- z[, k] - Rfast::mat.mult(
+        (z[, -k, drop = FALSE] - predictions_z_train[, -k, drop = FALSE]), 
+        Rfast::mat.mult(Rfast::spdinv(Sigma[-k, -k, drop = FALSE]), Sigma[-k, k, drop = FALSE])
       )
       
       # update sigma of the tree model
-      tree_samplers[[k]]$set_sigma(
-        sqrt(Sigma[k, k] - Sigma[k, -k, drop = FALSE] %*% solve(Sigma[-k, -k, drop = FALSE]) %*% Sigma[-k, k, drop = FALSE])
-      )
+      cond_var <- Sigma[k, k] - Rfast::mat.mult(Sigma[k, -k, drop = FALSE], Rfast::mat.mult(Rfast::spdinv(Sigma[-k, -k, drop = FALSE]), Sigma[-k, k, drop = FALSE]))
+      tree_samplers[[k]]$set_sigma(sqrt(cond_var))
       
       # predict k'th component of z (training data)
       mu_train <- t(tree_samplers[[k]]$do_gibbs(X_train, temp_z, X_train, i = 1)) 
@@ -270,10 +257,6 @@ soft_mpbart <- function(y_train, # training data - outcomes
     # sample unconstrained Sigma from inverted-Wishart
     nu_posterior <- nu_prior + num_obs_train
     rss <- t(errors) %*% errors
-    
-    #if (any(!is.finite(errors))) stop("Non-finite errors at iteration ", iter)
-    #if (any(!is.finite(rss))) stop("Non-finite RSS at iteration ", iter)
-    
     scalematr_posterior <- scalematr_prior + rss
     Sigma_star <- safe_riwish(nu = nu_posterior, scale = scalematr_posterior)
     
