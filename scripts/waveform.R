@@ -1,4 +1,4 @@
-# Simulation study for S-MPBART, with random forest and MBART with hard splits as benchmarks.
+# Simulation study for S-MPBART, with random forest and MBART with hard splits as benchmarks - WAVEFORM RECOGNITION
 
 library(mlbench)
 library(openxlsx)
