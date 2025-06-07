@@ -58,7 +58,7 @@ for (r in 1:reps) {
   # ----- RF -----
   # run rf
   #p <- ncol(wave_X_train)
-  #mtry_grid <- unique(c(1, floor(sqrt(p)) - 1, floor(sqrt(p)), floor(sqrt(p)) + 1, 5, 10, p))
+  #mtry_grid <- 1:p
   #pred_output <- rf_multiclass_cv(X_train = wave_X_train, y_train = wave_y_train, X_test = wave_X_test, mtry_grid = mtry_grid)
   
   # ----- MPBART WITH HARD SPLITS -----

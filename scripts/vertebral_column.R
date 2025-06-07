@@ -30,25 +30,25 @@ wb_output <- createWorkbook()
 for (i in seq_along(folds)) {
   # split the data based on fold
   vertebral_y_train <- vertebral_y[folds[[i]]]
-  vertebral_X_train <- vertebral_X_norm[folds[[i]], ]
+  vertebral_X_train <- vertebral_X[folds[[i]], ]
   vertebral_y_test <- vertebral_y[-folds[[i]]]
-  vertebral_X_test <- vertebral_X_norm[-folds[[i]], ]
+  vertebral_X_test <- vertebral_X[-folds[[i]], ]
   
   # ----- S-MPBART -----
   # run mcmc
-  mcmc_output <- soft_mpbart(y_train = vertebral_y_train,
-                             X_train = vertebral_X_train,
-                             X_test = vertebral_X_test,
-                             num_classes = 3,
-                             num_burnin = 1500,
-                             num_sim = 1500
-  )
-  pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
+  #mcmc_output <- soft_mpbart(y_train = vertebral_y_train,
+                             #X_train = vertebral_X_train,
+                             #X_test = vertebral_X_test,
+                             #num_classes = 3,
+                             #num_burnin = 1500,
+                             #num_sim = 1500
+  #)
+  #pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
   
   # ----- RANDOM FOREST -----
   # run rf
   p <- ncol(vertebral_X_train)
-  mtry_grid <- unique(c(1, floor(sqrt(p)) - 1, floor(sqrt(p)), floor(sqrt(p)) + 1, 5, 10, p))
+  mtry_grid <- 1:p
   pred_output <- rf_multiclass_cv(X_train = vertebral_X_train, y_train = vertebral_y_train, X_test = vertebral_X_test, mtry_grid = mtry_grid)
   
   # ----- MPBART -----
@@ -56,8 +56,8 @@ for (i in seq_along(folds)) {
   # compute and store misclassification error and brier score
   error <- test_error_rate(y_actual = vertebral_y_test, y_pred = pred_output$pred_y)
   brier_score <- brier_score_multiclass(y_actual = vertebral_y_test, y_prob = pred_output$post_probs)
-  vertebral_error_rates[r] <- error
-  vertebral_brier_scores[r] <- brier_score
+  vertebral_error_rates[i] <- error
+  vertebral_brier_scores[i] <- brier_score
 }
 
 # save output 
@@ -67,6 +67,6 @@ writeData(wb_output, sheet = "misclassification_rates", x = vertebral_error_rate
 writeData(wb_output, sheet = "brier_scores", x = vertebral_brier_scores)
 
 # (only write to one file, outcomment the other two, depending on which method is used)
-saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/smpbart_vertebral_output.xlsx", overwrite = TRUE)
-#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/rf_vertebral_output.xlsx", overwrite = TRUE)
+#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/smpbart_vertebral_output.xlsx", overwrite = TRUE)
+saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/rf_vertebral_output.xlsx", overwrite = TRUE)
 #saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/mpbart_vertebral_output.xlsx", overwrite = TRUE)
