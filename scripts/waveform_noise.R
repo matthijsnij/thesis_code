@@ -44,25 +44,25 @@ for (r in 1:reps) {
   colnames(wave_X_train) <- paste0("x", 1:p)
   colnames(wave_X_test) <- paste0("x", 1:p)
   
-  #wave_train_full <- cbind(wave_X_train, y = wave_y_train)
-  #wave_test_full <- cbind(wave_X_test, y = wave_y_test)
+  wave_train_full <- cbind(wave_X_train, y = wave_y_train)
+  wave_test_full <- cbind(wave_X_test, y = wave_y_test)
   
   # save data
-  #addWorksheet(wb, paste0("rep_", r, "_train"))
-  #addWorksheet(wb, paste0("rep_", r, "_test"))
-  #writeData(wb, sheet = paste0("rep_", r, "_train"), wave_train_full, colNames = TRUE)
-  #writeData(wb, sheet = paste0("rep_", r, "_test"), wave_test_full, colNames = TRUE)
+  addWorksheet(wb, paste0("rep_", r, "_train"))
+  addWorksheet(wb, paste0("rep_", r, "_test"))
+  writeData(wb, sheet = paste0("rep_", r, "_train"), wave_train_full, colNames = TRUE)
+  writeData(wb, sheet = paste0("rep_", r, "_test"), wave_test_full, colNames = TRUE)
   
   # ----- SOFT MPBART ------
   # run mcmc
-  #mcmc_output <- soft_mpbart(y_train = wave_y_train,
-  #X_train = wave_X_train,
-  #X_test = wave_X_test,
-  #num_classes = 3,
-  #num_burnin = 1500,
-  #num_sim = 1500
-  #)
-  #pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
+  mcmc_output <- soft_mpbart(y_train = wave_y_train,
+  X_train = wave_X_train,
+  X_test = wave_X_test,
+  num_classes = 3,
+  num_burnin = 1500,
+  num_sim = 1500
+  )
+  pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
   
   # ----- RF -----
   # run rf
@@ -80,12 +80,14 @@ for (r in 1:reps) {
 }
 
 # save data and/or output
-#saveWorkbook(wb, file = "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/waveform_data.xlsx", overwrite = TRUE)
+saveWorkbook(wb, file = "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/waveform_noise_data.xlsx", overwrite = TRUE)
 
 addWorksheet(wb_output, "misclassification_rates")
 addWorksheet(wb_output, "brier_scores")
 writeData(wb_output, sheet = "misclassification_rates", x = wave_error_rates)
 writeData(wb_output, sheet = "brier_scores", x = wave_brier_scores)
-#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/smpbart_waveform_output.xlsx", overwrite = TRUE)
-saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/rf_waveform_output.xlsx", overwrite = TRUE)
-#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/mpbart_waveform_output.xlsx", overwrite = TRUE)
+
+# (only write to one file, outcomment the other two)
+saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/smpbart_waveform_noise_output.xlsx", overwrite = TRUE)
+#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/rf_waveform_noise_output.xlsx", overwrite = TRUE)
+#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/mpbart_waveform_noise_output.xlsx", overwrite = TRUE)

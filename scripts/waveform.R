@@ -70,15 +70,17 @@ for (r in 1:reps) {
   wave_brier_scores[r] <- brier_score
 }
 
-# save data and/or output
+# save data and/or output 
 #saveWorkbook(wb, file = "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/waveform_data.xlsx", overwrite = TRUE)
 
 addWorksheet(wb_output, "misclassification_rates")
 addWorksheet(wb_output, "brier_scores")
 writeData(wb_output, sheet = "misclassification_rates", x = wave_error_rates)
 writeData(wb_output, sheet = "brier_scores", x = wave_brier_scores)
+
+# (only write to one file, outcomment the other two)
 #saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/smpbart_waveform_output.xlsx", overwrite = TRUE)
-saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/rf_waveform_output.xlsx", overwrite = TRUE)
-#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/mpbart_waveform_output.xlsx", overwrite = TRUE)
+#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/rf_waveform_output.xlsx", overwrite = TRUE)
+saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/mpbart_waveform_output.xlsx", overwrite = TRUE)
 
 
