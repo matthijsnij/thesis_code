@@ -10,7 +10,7 @@ source("random_forest.R")
 # read preprocessed, ready-to-use data
 vertebral <- read.csv("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", header = TRUE)
 vertebral_y <- vertebral[[ncol(vertebral)]]
-vertebral_X <- vertebral[, 1:ncol(vertebral) - 1]
+vertebral_X <- as.matrix(vertebral[, 1:(ncol(vertebral) - 1)])
 
 # ------------ CREATE TRAIN AND TEST SETS ------------
 
@@ -30,26 +30,26 @@ wb_output <- createWorkbook()
 for (i in seq_along(folds)) {
   # split the data based on fold
   vertebral_y_train <- vertebral_y[folds[[i]]]
-  vertebral_X_train <- vertebral_X[folds[[i]], ]
+  vertebral_X_train <- as.matrix(vertebral_X[folds[[i]], ])
   vertebral_y_test <- vertebral_y[-folds[[i]]]
-  vertebral_X_test <- vertebral_X[-folds[[i]], ]
+  vertebral_X_test <- as.matrix(vertebral_X[-folds[[i]], ])
   
   # ----- S-MPBART -----
   # run mcmc
-  #mcmc_output <- soft_mpbart(y_train = vertebral_y_train,
-                             #X_train = vertebral_X_train,
-                             #X_test = vertebral_X_test,
-                             #num_classes = 3,
-                             #num_burnin = 1500,
-                             #num_sim = 1500
-  #)
-  #pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
+  mcmc_output <- soft_mpbart(y_train = vertebral_y_train,
+                             X_train = vertebral_X_train,
+                             X_test = vertebral_X_test,
+                             num_classes = 3,
+                             num_burnin = 1500,
+                             num_sim = 1500
+  )
+  pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
   
   # ----- RANDOM FOREST -----
   # run rf
-  p <- ncol(vertebral_X_train)
-  mtry_grid <- 1:p
-  pred_output <- rf_multiclass_cv(X_train = vertebral_X_train, y_train = vertebral_y_train, X_test = vertebral_X_test, mtry_grid = mtry_grid)
+  #p <- ncol(vertebral_X_train)
+  #mtry_grid <- 1:p
+  #pred_output <- rf_multiclass_cv(X_train = vertebral_X_train, y_train = vertebral_y_train, X_test = vertebral_X_test, mtry_grid = mtry_grid)
   
   # ----- MPBART -----
   
@@ -68,5 +68,5 @@ writeData(wb_output, sheet = "brier_scores", x = vertebral_brier_scores)
 
 # (only write to one file, outcomment the other two, depending on which method is used)
 #saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/smpbart_vertebral_output.xlsx", overwrite = TRUE)
-saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/rf_vertebral_output.xlsx", overwrite = TRUE)
+#saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/rf_vertebral_output.xlsx", overwrite = TRUE)
 #saveWorkbook(wb_output, "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/mpbart_vertebral_output.xlsx", overwrite = TRUE)

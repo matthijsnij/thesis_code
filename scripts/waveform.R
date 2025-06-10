@@ -15,8 +15,7 @@ wave_brier_scores <- rep(0, reps)
 # set seed for reproduceability
 set.seed(123)
 
-# create workbooks
-#wb <- createWorkbook() # for data
+# create workbook
 wb_output <- createWorkbook() # for output
 
 for (r in 1:reps) {
@@ -35,15 +34,6 @@ for (r in 1:reps) {
   colnames(wave_X_train) <- paste0("x", 1:p)
   colnames(wave_X_test) <- paste0("x", 1:p)
   
-  #wave_train_full <- cbind(wave_X_train, y = wave_y_train)
-  #wave_test_full <- cbind(wave_X_test, y = wave_y_test)
-  
-  # save data
-  #addWorksheet(wb, paste0("rep_", r, "_train"))
-  #addWorksheet(wb, paste0("rep_", r, "_test"))
-  #writeData(wb, sheet = paste0("rep_", r, "_train"), wave_train_full, colNames = TRUE)
-  #writeData(wb, sheet = paste0("rep_", r, "_test"), wave_test_full, colNames = TRUE)
-  
   # ----- SOFT MPBART ------
   # run mcmc
   #mcmc_output <- soft_mpbart(y_train = wave_y_train,
@@ -58,10 +48,10 @@ for (r in 1:reps) {
   # ----- RF -----
   # run rf
   #p <- ncol(wave_X_train)
-  #mtry_grid <- 1:p
+  #mtry_grid <-  unique(c(1, floor(sqrt(p)) - 1, floor(sqrt(p)), floor(sqrt(p)) + 1, 5, 10, p))
   #pred_output <- rf_multiclass_cv(X_train = wave_X_train, y_train = wave_y_train, X_test = wave_X_test, mtry_grid = mtry_grid)
   
-  # ----- MPBART WITH HARD SPLITS -----
+  # ----- MPBART -----
   
   # compute test error rate and brier score
   error <- test_error_rate(y_actual = wave_y_test, y_pred = pred_output$pred_y)
@@ -70,9 +60,7 @@ for (r in 1:reps) {
   wave_brier_scores[r] <- brier_score
 }
 
-# save data and/or output 
-#saveWorkbook(wb, file = "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/waveform_data.xlsx", overwrite = TRUE)
-
+# save output
 addWorksheet(wb_output, "misclassification_rates")
 addWorksheet(wb_output, "brier_scores")
 writeData(wb_output, sheet = "misclassification_rates", x = wave_error_rates)
