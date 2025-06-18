@@ -8,6 +8,7 @@ library(MCMCpack)
 library(tmvmixnorm)
 library(SoftBart)
 library(Rfast)
+library(LaplacesDemon)
 
 # ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
 
@@ -66,49 +67,6 @@ sample_latent_variables <- function(mu, # mean vector Kx1
   # sample and return
   z_i <- tmvmixnorm::rtmvn(n = 1, Mean = mu, Sigma = Sigma, lower = lower, upper = upper, D = A)
   return(drop(z_i))
-}
-
-# ------ FUNCTION TO SAFELY SAMPLE FROM INV-WISHART
-
-#'@description Function to sample from inverted-Wishart, avoiding singular scale matrix
-#'
-#'@param nu Posterior d.o.f.
-#'@param scale Posterior scale matrix 
-#'@param jitter_init Initial jitter factor
-#'@param jitter_mult Multiplier for jitter factor
-#'@param max_attempts Maximum number of jitter increases before stopping
-#'@return A draw from inverted-Wishart distribution
-safe_riwish <- function(nu, scale, jitter_init = 1e-8, jitter_mult = 10, max_attempts = 5) {
-  # check 
-  if (any(!is.finite(scale))) stop("Scale has non-finite entries before jittering.")
-  if (any(is.na(scale))) stop("Scale has NA entries before jittering.")
-  
-  # check positive definiteness 
-  is_pos_def <- function(mat) {
-    tryCatch({
-      chol(mat)
-      TRUE
-    }, error = function(e) FALSE)
-  }
-  
-  jitter <- jitter_init
-  scale_jittered <- scale
-  diag_n <- diag(nrow(scale))
-  
-  attempts <- 0
-  while (!is_pos_def(scale_jittered) && attempts < max_attempts) {
-    scale_jittered <- scale + jitter * diag_n
-    jitter <- jitter * jitter_mult
-    attempts <- attempts + 1
-  }
-  
-  if (!is_pos_def(scale_jittered)) {
-    stop("Scale matrix is not positive definite even after jittering.")
-  }
-  
-  # sample from inverse Wishart
-  Sigma_star <- riwish(nu, scale_jittered)
-  return(Sigma_star)
 }
 
 # ------------- SOFT MPBART FUNCTION -----------------
@@ -257,7 +215,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
     nu_posterior <- nu_prior + num_obs_train
     rss <- t(errors) %*% errors
     scalematr_posterior <- scalematr_prior + rss
-    Sigma_star <- safe_riwish(nu = nu_posterior, scale = scalematr_posterior)
+    Sigma_star <- LaplacesDemon::rinvwishart(nu_posterior, scalematr_posterior)
     
     # scale to force trace restriction
     Sigma <- (K / sum(diag(Sigma_star))) * Sigma_star
@@ -377,33 +335,6 @@ brier_score_multiclass <- function(y_actual, y_prob) {
   return(score)
 }
 
-# ------ GEWEKE TEST FUNCTION ---------
-geweke_test_z <- function(z_draws, n_check = 3) {
-  
-  n_iter <- dim(z_draws)[1]
-  n_obs  <- dim(z_draws)[2]
-  n_comp <- dim(z_draws)[3]
-  
-  obs_indices <- sample(1:n_obs, min(n_check, n_obs))
-  
-  for (obs in obs_indices) {
-    comp <- sample(1:n_comp, 1)
-    
-    trace <- z_draws[, obs, comp]
-    mcmc_trace <- mcmc(trace)
-    geweke_result <- geweke.diag(mcmc_trace)
-    z_score <- geweke_result$z
-    
-    cat(sprintf("Obs %d, Component %d --> Geweke z-score: %.4f\n", obs, comp, z_score))
-    
-    # plot trace and ACF
-    par(mfrow = c(1, 2))
-    plot(trace, type = "l", main = sprintf("Trace Plot\nObs %d, Comp %d", obs, comp), xlab = "Iteration", ylab = "Value")
-    acf(trace, main = "ACF")
-  }
-  
-  par(mfrow = c(1, 1))  # reset layout
-}
 
 
 

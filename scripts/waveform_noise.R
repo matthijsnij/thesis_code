@@ -12,7 +12,7 @@ source("random_forest.R")
 reps <- 10
 wave_error_rates <- rep(0, reps)
 wave_brier_scores <- rep(0, reps)
-num_noise <- 20 # number of noise variables to add
+num_noise <- 60 # number of noise variables to add
 
 # set seed for reproduceability
 set.seed(123)

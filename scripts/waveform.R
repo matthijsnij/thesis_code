@@ -5,6 +5,7 @@ library(openxlsx)
 source("soft_mpbart.R")
 source("random_forest.R")
 
+
 # ------- WAVEFORM RECOGNITION -------
 
 # perform 10 replications and save the error rates
@@ -36,14 +37,14 @@ for (r in 1:reps) {
   
   # ----- SOFT MPBART ------
   # run mcmc
-  #mcmc_output <- soft_mpbart(y_train = wave_y_train,
-                             #X_train = wave_X_train,
-                             #X_test = wave_X_test,
-                             #num_classes = 3,
-                             #num_burnin = 1500,
-                             #num_sim = 1500
-  #)
-  #pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
+  mcmc_output <- soft_mpbart(y_train = wave_y_train,
+                             X_train = wave_X_train,
+                             X_test = wave_X_test,
+                             num_classes = 3,
+                             num_burnin = 1500,
+                             num_sim = 1500
+  )
+  pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
   
   # ----- RF -----
   # run rf
