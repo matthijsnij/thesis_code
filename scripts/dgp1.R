@@ -14,7 +14,7 @@ n_train <- 500
 n_test <- 1000
 n_rep <- 10
 
-method <- "rf"   # choose from "smpbart", "mpbart","rf"
+method <- "smpbart"   # choose from "smpbart", "mpbart","rf"
 
 # ------ GENERATE DATA -----
 

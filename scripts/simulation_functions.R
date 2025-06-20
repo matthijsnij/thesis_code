@@ -50,6 +50,41 @@ generate_dgp1_data <- function(n_train, n_test) {
   )
 }
 
+# --------- DGP 2 DATA GENERATION
+generate_dgp2_data <- function(n_train, n_test, p = 10) {
+  
+  # generate predictors
+  X_train <- matrix(runif(n_train * p), nrow = n_train, ncol = p)
+  X_test <- matrix(runif(n_test * p), nrow = n_test, ncol = p)
+  
+  # latent function for Friedman #1
+  latent_fun <- function(X) {
+    10 * sin(pi * X[,1] * X[,2]) + 
+      20 * (X[,3] - 0.5)^2 + 
+      10 * X[,4] + 
+      5 * X[,5]
+  }
+  
+  # generate latent variable with noise
+  z_train <- latent_fun(X_train) + rnorm(n_train)
+  z_test <- latent_fun(X_test) + rnorm(n_test)
+  
+  # compute quantile thresholds based on train latent variable
+  q1 <- quantile(z_train, probs = 1/3)
+  q2 <- quantile(z_train, probs = 2/3)
+  
+  # compute classes 0,1,2 based on thresholds
+  y_train <- as.integer(cut(z_train, breaks = c(-Inf, q1, q2, Inf), c(0, 1, 2)))
+  y_test <- as.integer(cut(z_test, breaks = c(-Inf, q1, q2, Inf), c(0, 1, 2))) 
+  
+  list(
+    X_train = X_train,
+    y_train = y_train,
+    X_test = X_test,
+    y_test = y_test
+  )
+}
+
 # --------- RUN METHOD ON SIMULATED DATA ----------
 run_method <- function(method, sim_data, which_dgp) {
   
