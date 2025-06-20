@@ -37,20 +37,20 @@ for (r in 1:reps) {
   
   # ----- SOFT MPBART ------
   # run mcmc
-  mcmc_output <- soft_mpbart(y_train = wave_y_train,
-                             X_train = wave_X_train,
-                             X_test = wave_X_test,
-                             num_classes = 3,
-                             num_burnin = 1500,
-                             num_sim = 1500
-  )
-  pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
+  #mcmc_output <- soft_mpbart(y_train = wave_y_train,
+                             #X_train = wave_X_train,
+                             #X_test = wave_X_test,
+                             #num_classes = 3,
+                             #num_burnin = 1500,
+                             #num_sim = 1500
+  #)
+  #pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
   
   # ----- RF -----
   # run rf
-  #p <- ncol(wave_X_train)
-  #mtry_grid <-  unique(c(1, floor(sqrt(p)) - 1, floor(sqrt(p)), floor(sqrt(p)) + 1, 5, 10, p))
-  #pred_output <- rf_multiclass_cv(X_train = wave_X_train, y_train = wave_y_train, X_test = wave_X_test, mtry_grid = mtry_grid)
+  p <- ncol(wave_X_train)
+  mtry_grid <-  c(2, 4, 5, 6, 8, 10, 15, 20)
+  pred_output <- rf_multiclass_cv(X_train = wave_X_train, y_train = wave_y_train, X_test = wave_X_test, mtry_grid = mtry_grid)
   
   # ----- MPBART -----
   
