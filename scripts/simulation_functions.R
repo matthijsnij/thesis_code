@@ -51,7 +51,22 @@ generate_dgp1_data <- function(n_train, n_test) {
 }
 
 # --------- DGP 2 DATA GENERATION
-generate_dgp2_data <- function(n_train, n_test, p = 10) {
+
+#'@description Function which generates data for a single replication of DGP 2 (possibly with extra noise predictors)
+#'
+#'@param n_train Number of training observations to be generated
+#'@param n_test Number of test observations to be generated
+#'@param p Number of predictors to include. Should be at least 5. Any additional predictors are noise predictors.
+#'@return A list containing the following objects:
+#'\item{X_train}{Matrix of predictors for training data}
+#'\item{y_train}{Vector of responses for training data}
+#'\item{X_test}{Matrix of predictors for test data}
+#'\item{y_test}{Vector of responses for test data}
+generate_dgp2_data <- function(n_train, n_test, p) {
+  
+  if (p < 5) {
+    stop("p should be larger or equal to 5")
+  }
   
   # generate predictors
   X_train <- matrix(runif(n_train * p), nrow = n_train, ncol = p)
@@ -91,6 +106,9 @@ run_method <- function(method, sim_data, which_dgp) {
   if (which_dgp == "dgp1") {
     num_classes <- 3
     mtry_grid <- c(1,2)
+  } else if (which_dgp == "dgp2") {
+    num_classes <- 3
+    mtry_grid <- c(2, 3, 4, 6, 8, 10)
   } else {
       stop("Run with a correct DGP. Choose from 'dgp1', 'dgp2', 'dgp3'")
   }
