@@ -1,4 +1,5 @@
 # DGP 2: Friedman 
+# Benchmark methods are Random Forest and MPBART with hard splits as implemented by Xu et al. (2024)
 
 library(openxlsx)
 source("soft_mpbart.R")

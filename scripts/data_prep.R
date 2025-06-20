@@ -12,6 +12,10 @@ vertebral_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/v
 vertebral_y <- vertebral_data[[ncol(vertebral_data)]]
 vertebral_X <- as.matrix(vertebral_data[, 1:(ncol(vertebral_data)-1)])
 
+iris_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/iris/iris.data', header = TRUE)
+iris_y <- iris_data[[ncol(iris_data)]]
+iris_X <- as.matrix(iris_data[, 1:(ncol(iris_data)-1)])
+
 # ------------ PREPROCESS DATA -------------
 
 # -- GLASS --
@@ -43,10 +47,26 @@ for (i in 1:length(vertebral_y)) {
 # normalize covariates
 vertebral_X_norm <- rank_normalize(vertebral_X)
 
+# -- IRIS --
+# change class labels to 0 = Iris-setosa, 1 = Iris-versicolour, 2 = Iris-virginica
+for (i in 1:length(iris_y)) {
+  if (iris_y[i] == "Iris-setosa") {
+    iris_y[i] <- 0
+  } else if (iris_y[i] == "Iris-versicolour") {
+    iris_y[i] <- 1
+  } else {
+    iris_y[i] <- 2
+  }
+}
+
+# normalize covariates
+iris_X_norm <- rank_normalize(iris_X)
+
 
 # --------- SAVE PREPROCESSED DATA SETS -------------
 write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+write.table(as.data.frame(cbind(iris_X_norm, iris_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/iris_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 
