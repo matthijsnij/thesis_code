@@ -89,8 +89,8 @@ generate_dgp2_data <- function(n_train, n_test, p) {
   q2 <- quantile(z_train, probs = 2/3)
   
   # compute classes 0,1,2 based on thresholds
-  y_train <- as.integer(cut(z_train, breaks = c(-Inf, q1, q2, Inf), c(0, 1, 2)))
-  y_test <- as.integer(cut(z_test, breaks = c(-Inf, q1, q2, Inf), c(0, 1, 2))) 
+  y_train <- as.numeric(as.character(cut(z_train, breaks = c(-Inf, q1, q2, Inf), labels = c(0, 1, 2))))
+  y_test  <- as.numeric(as.character(cut(z_test,  breaks = c(-Inf, q1, q2, Inf), labels = c(0, 1, 2))))
   
   list(
     X_train = X_train,
@@ -109,8 +109,11 @@ run_method <- function(method, sim_data, which_dgp) {
   } else if (which_dgp == "dgp2") {
     num_classes <- 3
     mtry_grid <- c(2, 3, 4, 6, 8, 10)
+  } else if (which_dgp == "dgp2extranoise") {
+    num_classes <- 3
+    mtry_grid <- c(2, 4, 8, 15, 30, 50)
   } else {
-      stop("Run with a correct DGP. Choose from 'dgp1', 'dgp2', 'dgp3'")
+      stop("Run with a correct DGP. Choose from 'dgp1', 'dgp2', 'dgp2extranoise', 'dgp3'")
   }
   
   # to store error rates and brier scores
