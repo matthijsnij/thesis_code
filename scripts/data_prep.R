@@ -52,7 +52,7 @@ vertebral_X_norm <- rank_normalize(vertebral_X)
 for (i in 1:length(iris_y)) {
   if (iris_y[i] == "Iris-setosa") {
     iris_y[i] <- 0
-  } else if (iris_y[i] == "Iris-versicolour") {
+  } else if (iris_y[i] == "Iris-versicolor") {
     iris_y[i] <- 1
   } else {
     iris_y[i] <- 2
