@@ -12,9 +12,9 @@ library(LaplacesDemon)
 
 # ---------------- FUNCTION FOR COVARIATE NORMALIZATION ----------------------
 
-#'@description applies rank normalization to a matrix of doubles 
+#'@description Applies rank normalization to a matrix of doubles 
 #'
-#'@param X matrix of doubles
+#'@param X Matrix of doubles
 #'@return Normalized matrix of doubles
 rank_normalize <- function(X) {
   apply(X, 2, function(col) {

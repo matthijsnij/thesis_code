@@ -101,6 +101,12 @@ generate_dgp2_data <- function(n_train, n_test, p) {
 }
 
 # --------- RUN METHOD ON SIMULATED DATA ----------
+
+#'@description Function which runs a method on all simulated data (all replications). Writes the results to excel.
+#'
+#'@param method The method to run: smpbart, mpbart or rf
+#'@param sim_data List of all replications of simulated data
+#'@param which_dgp The DGP from which data is generated
 run_method <- function(method, sim_data, which_dgp) {
   
   if (which_dgp == "dgp1") {
