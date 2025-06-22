@@ -66,7 +66,7 @@ run_method <- function(method, data, which_dataset, seed) {
   set.seed(seed = seed)
   y <- data$y
   X <- data$X
-  folds <- createFolds(y, k = num_folds, list = TRUE, returnTrain = TRUE)
+  folds <- createFolds(as.factor(y), k = num_folds, list = TRUE)
   
   # to store output
   wb_output <- createWorkbook()
@@ -74,10 +74,10 @@ run_method <- function(method, data, which_dataset, seed) {
   for (i in seq_along(folds)) {
     
     # get correct train and test data
-    y_train <- y[folds[[i]]]
-    X_train <- as.matrix(X[folds[[i]], ])
-    y_test <- y[-folds[[i]]]
-    X_test <- as.matrix(X[-folds[[i]], ])
+    y_train <- y[-folds[[i]]]
+    X_train <- as.matrix(X[-folds[[i]], ])
+    y_test <- y[folds[[i]]]
+    X_test <- as.matrix(X[folds[[i]], ])
     
     if (method == "smpbart") {
       # run mcmc
@@ -100,8 +100,8 @@ run_method <- function(method, data, which_dataset, seed) {
     # compute test error rate and brier score
     error <- test_error_rate(y_actual = y_test, y_pred = pred_output$pred_y)
     brier_score <- brier_score_multiclass(y_actual = y_test, y_prob = pred_output$post_probs)
-    error_rates[r] <- error
-    brier_scores[r] <- brier_score
+    error_rates[i] <- error
+    brier_scores[i] <- brier_score
   }
   
   # save output
