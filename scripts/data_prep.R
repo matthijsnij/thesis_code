@@ -16,6 +16,10 @@ iris_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/iris/i
 iris_y <- iris_data[[ncol(iris_data)]]
 iris_X <- as.matrix(iris_data[, 1:(ncol(iris_data)-1)])
 
+wine_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/wine/winequality-red.csv', header = TRUE, sep = ";")
+wine_y <- wine_data[[ncol(wine_data)]]
+wine_X <- as.matrix(wine_data[, 1:(ncol(wine_data)-1)])
+
 # ------------ PREPROCESS DATA -------------
 
 # -- GLASS --
@@ -62,12 +66,22 @@ for (i in 1:length(iris_y)) {
 # normalize covariates
 iris_X_norm <- rank_normalize(iris_X)
 
+# -- WINE --
+# quality ranges from 3 to 8
+# change class labels to 0-based so 0 = quality 3, 1 = quality 4,..., 5  = quality 8
+for (i in 1:length(wine_y)) {
+  wine_y[i] = wine_y[i] - 3
+}
+
+# normalize covariates
+wine_X_norm <- rank_normalize(wine_X)
+
 
 # --------- SAVE PREPROCESSED DATA SETS -------------
 write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(iris_X_norm, iris_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/iris_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-
+write.table(as.data.frame(cbind(wine_X_norm, wine_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/wine_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 

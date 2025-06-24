@@ -2,6 +2,7 @@
 
 library(glue)
 library(openxlsx)
+library(MASS)
 
 # -------- DGP 1 DATA GENERATION -------
 
@@ -50,7 +51,7 @@ generate_dgp1_data <- function(n_train, n_test) {
   )
 }
 
-# --------- DGP 2 DATA GENERATION
+# --------- DGP 2 DATA GENERATION -------
 
 #'@description Function which generates data for a single replication of DGP 2 (possibly with extra noise predictors)
 #'
@@ -91,6 +92,55 @@ generate_dgp2_data <- function(n_train, n_test, p) {
   # compute classes 0,1,2 based on thresholds
   y_train <- as.numeric(as.character(cut(z_train, breaks = c(-Inf, q1, q2, Inf), labels = c(0, 1, 2))))
   y_test  <- as.numeric(as.character(cut(z_test,  breaks = c(-Inf, q1, q2, Inf), labels = c(0, 1, 2))))
+  
+  list(
+    X_train = X_train,
+    y_train = y_train,
+    X_test = X_test,
+    y_test = y_test
+  )
+}
+
+# --------- DGP 3 DATA GENERATION --------
+generate_dgp3_data <- function(n_train, n_test, n_predictors, n_classes = 4,
+                                            lengthscale = 0.3, variance = 1.0) {
+  
+  n_total <- n_train + n_test
+  
+  # generate uniform predictors
+  X <- matrix(runif(n_total * n_predictors), nrow = n_total, ncol = n_predictors)
+  
+  # function to compute squared Euclidean distance matrix between rows of X
+  squared_dist_matrix <- function(X) {
+    sum_X <- rowSums(X^2)
+    outer(sum_X, sum_X, "+") - 2 * (X %*% t(X))
+  }
+  
+  # compute covariance matrix with multivariate RBF kernel
+  dists <- squared_dist_matrix(X)
+  Sigma <- variance * exp(-0.5 * dists / lengthscale^2)
+  
+  # generate latent functions for each class
+  latent_mat <- sapply(1:n_classes, function(k) {
+    mvrnorm(1, mu = rep(0, n_total), Sigma = Sigma)
+  })
+  
+  # softmax function for class probabilities
+  softmax <- function(F) {
+    expF <- exp(F - apply(F, 1, max)) # for numerical stability
+    expF / rowSums(expF)
+  }
+  probs <- softmax(latent_mat)
+  
+  # sample class labels
+  y <- apply(probs, 1, function(p) sample(1:n_classes, size = 1, prob = p))
+  y <- y - 1  # convert to 0-based class labeling
+  
+  # Split train/test
+  X_train <- X[1:n_train, , drop = FALSE]
+  y_train <- y[1:n_train]
+  X_test <- X[(n_train + 1):n_total, , drop = FALSE]
+  y_test <- y[(n_train + 1):n_total]
   
   list(
     X_train = X_train,

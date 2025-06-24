@@ -1,5 +1,5 @@
 Attribute Information: NOTE: ID NUMBER REMOVED SO FIRST COLUMN IS RI
-   1. Id number: 1 to 214
+   1. Id number: 1 to 214 (removed)
    2. RI: refractive index
    3. Na: Sodium (unit measurement: weight percent in corresponding oxide, as 
                   are attributes 4-10)
@@ -11,10 +11,10 @@ Attribute Information: NOTE: ID NUMBER REMOVED SO FIRST COLUMN IS RI
    9. Ba: Barium
   10. Fe: Iron
   11. Type of glass: (class attribute)
-      -- 1 building_windows_float_processed
-      -- 2 building_windows_non_float_processed
-      -- 3 vehicle_windows_float_processed
-      -- 4 vehicle_windows_non_float_processed (none in this database)
-      -- 5 containers
-      -- 6 tableware
-      -- 7 headlamps
+      -- building_windows_float_processed =0
+      -- building_windows_non_float_processed =1
+      -- vehicle_windows_float_processed =2
+      -- vehicle_windows_non_float_processed (no observations with this class)
+      -- containers =3
+      -- tableware =4
+      -- headlamps =5

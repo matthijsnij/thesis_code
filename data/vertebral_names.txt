@@ -5,4 +5,4 @@
 @attribute pelvic_radius numeric
 @attribute degree_spondylolisthesis numeric
 
-@attribute class {Hernia, Spondylolisthesis, Normal}
+@attribute class {Hernia=0, Spondylolisthesis=1, Normal=2}

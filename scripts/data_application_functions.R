@@ -13,10 +13,10 @@ library(openxlsx)
 #'\item{y}{Vector of observed class labels}
 read_data <- function(dataset) {
   
-  all_datasets <- c("glass", "vertebral", "iris")
+  all_datasets <- c("glass", "vertebral", "iris", "wine")
   
   if (!(dataset %in% all_datasets)) {
-    stop("Please input a correct dataset. Choose from 'glass', 'vertebral', 'iris'")
+    stop("Please input a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine'")
   }
   
   path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/{dataset}_preprocessed.csv")
@@ -54,8 +54,12 @@ run_method <- function(method, data, which_dataset, seed) {
     num_classes <- 3
     num_folds <- 10
     mtry_grid <- c(1, 2, 3, 4)
+  } else if (which_dataset == "wine") {
+    num_classes <- 6
+    num_folds <- 5
+    mtry_grid <- c(1, 2, 3, 4)
   } else {
-    stop("Run with a correct dataset. Choose from 'glass', 'vertebral', 'iris', ''")
+    stop("Run with a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine'")
   }
   
   # to store error rates and brier scores
