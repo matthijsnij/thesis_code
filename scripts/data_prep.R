@@ -16,9 +16,9 @@ iris_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/iris/i
 iris_y <- iris_data[[ncol(iris_data)]]
 iris_X <- as.matrix(iris_data[, 1:(ncol(iris_data)-1)])
 
-wine_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/wine/winequality-red.csv', header = TRUE, sep = ";")
-wine_y <- wine_data[[ncol(wine_data)]]
-wine_X <- as.matrix(wine_data[, 1:(ncol(wine_data)-1)])
+wine_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/wine/wine.data', header = TRUE, sep = ",")
+wine_y <- wine_data[[1]] 
+wine_X <- as.matrix(wine_data[, 2:ncol(wine_data)])
 
 # ------------ PREPROCESS DATA -------------
 
@@ -67,12 +67,8 @@ for (i in 1:length(iris_y)) {
 iris_X_norm <- rank_normalize(iris_X)
 
 # -- WINE --
-# quality ranges from 3 to 8
-# change class labels to 0-based so 0 = quality 3, 1 = quality 4,..., 5  = quality 8
-for (i in 1:length(wine_y)) {
-  wine_y[i] = wine_y[i] - 3
-}
-
+# 0 based
+wine_y <- wine_y - 1
 # normalize covariates
 wine_X_norm <- rank_normalize(wine_X)
 

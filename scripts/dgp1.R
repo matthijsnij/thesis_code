@@ -1,4 +1,4 @@
-# DGP 1: Piecewise sinusoid + discontinuity 
+# DGP 1: Piecewise sinusoids + discontinuity 
 # Benchmark methods are Random Forest and MPBART with hard splits as implemented by Xu et al. (2024)
 
 library(openxlsx)
@@ -15,7 +15,7 @@ n_train <- 500
 n_test <- 1000
 n_rep <- 10
 
-method <- "rf"   # choose from "smpbart", "mpbart","rf"
+method <- "smpbart"   # choose from "smpbart", "mpbart","rf"
 
 # ------ GENERATE DATA -----
 
@@ -23,7 +23,7 @@ method <- "rf"   # choose from "smpbart", "mpbart","rf"
 dgp1_data <- lapply(1:n_rep, function(i) generate_dgp1_data_test(n_train, n_test))
 
 # write all generated data to excel
-#write_data(n_rep = n_rep, all_data = dgp1_data, which_dgp = "dgp1", seed = seed)
+write_data(n_rep = n_rep, all_data = dgp1_data, which_dgp = "dgp1", seed = seed)
 
 # ------ RUN METHOD -------
 run_method(method = method, sim_data = dgp1_data, which_dgp = "dgp1")

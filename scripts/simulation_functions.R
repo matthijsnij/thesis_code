@@ -296,7 +296,7 @@ generate_dgp3_data <- function(n_train, n_test, n_predictors = 6, n_classes = 4,
 #'@param which_dgp The DGP from which data is generated
 run_method <- function(method, sim_data, which_dgp) {
   
-  if (which_dgp == "dgp1" || which_dgp == "dgp1copy") {
+  if (which_dgp == "dgp1") {
     num_classes <- 3
     mtry_grid <- c(1,2)
   } else if (which_dgp == "dgp2") {
