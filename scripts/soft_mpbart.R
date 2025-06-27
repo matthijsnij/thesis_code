@@ -126,8 +126,8 @@ soft_mpbart <- function(y_train, # training data - outcomes
   z <- matrix(NA_real_, nrow = num_obs_train, ncol = K) # to store sampled latent variables (resampled each iteration)
   Sigma <- diag(K) # set Sigma to identity matrix
   
-  nu_prior <- K + 1 # prior d.o.f inv-Wishart
-  scalematr_prior <- nu_prior * diag(K) # prior scale matrix inv-Wishart
+  nu_prior <- K + 2 # prior d.o.f inv-Wishart
+  scalematr_prior <- diag(K) # prior scale matrix inv-Wishart
   
   hypers <- vector("list", K) # to store hyperparams for softBART models
   tree_samplers <- vector("list", K) # to store softBART models

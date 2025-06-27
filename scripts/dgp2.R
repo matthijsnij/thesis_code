@@ -8,13 +8,14 @@ source("simulation_functions.R")
 
 # -------- SET SEED AND PARAMS --------
 
-seed <- 123
+seed <- 234 # 234 for normal, 345 for extra noise
 set.seed(seed)  # for reproducibility
 
 n_train <- 500
 n_test <- 1000
 n_rep <- 10
 method <- "smpbart"   # choose from "smpbart", "mpbart","rf"
+dgp2_setting <- "dgp2" # choose from 'dgp2' and 'dgp2extranoise'
 
 # ------ GENERATE DATA -----
 
@@ -23,7 +24,7 @@ n_extra_noise <- 0 # number of extra noise predictors to include
 dgp2_data <- lapply(1:n_rep, function(i) generate_dgp2_data(n_train, n_test, p = (10 + n_extra_noise)))
 
 # write all generated data to excel
-#write_data(n_rep = n_rep, all_data = dgp2_data, which_dgp = "dgp2", seed = seed)
+#write_data(n_rep = n_rep, all_data = dgp2_data, which_dgp = dgp2_setting, seed = seed)
 
 # ------ RUN METHOD -------
-run_method(method = method, sim_data = dgp2_data, which_dgp = "dgp2")
+run_method(method = method, sim_data = dgp2_data, which_dgp = dgp2_setting)

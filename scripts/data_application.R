@@ -13,7 +13,7 @@ dataset <- "wine"   # choose from "glass", "vertebral", "iris", "wine"
 data <- read_data(dataset = dataset)
 
 # specify which method to run
-method <- "smpbart"  # choose from "smpbart", "mpbart","rf"
+method <- "rf"  # choose from "smpbart", "mpbart","rf"
 
 # ---- RUN METHOD ON TRAIN/TEST SPLITS OF REAL DATA -----
 seed <- 123

@@ -3,6 +3,7 @@
 library(glue)
 library(openxlsx)
 library(MASS)
+library(fields)
 
 # -------- DGP 1 DATA GENERATION -------
 
@@ -16,32 +17,127 @@ library(MASS)
 #'\item{X_test}{Matrix of predictors for test data}
 #'\item{y_test}{Vector of responses for test data}
 generate_dgp1_data <- function(n_train, n_test) {
-  # helper function for generating y
-  compute_z <- function(x1, x2, epsilon) {
-    ifelse(x1 <= 0.5,
-           5 * sin(2 * pi * x1) + 3 * x2 + epsilon,
-           5 * sin(2 * pi * x1) - 3 * x2 + epsilon)
+  
+  # helper functions: one latent function per class
+  compute_z0 <- function(x1, x2, epsilon) {
+    5 * sin(2 * pi * x1) + 3 * x2 + epsilon
+  }
+  
+  compute_z1 <- function(x1, x2, epsilon) {
+    5 * cos(2 * pi * x1) - 2 * x2 + epsilon
+  }
+  
+  compute_z2 <- function(x1, x2, epsilon) {
+    3 * sin(4 * pi * x1) + x2^2 + epsilon
+  }
+  
+  # softmax function
+  softmax <- function(z) {
+    exp_z <- exp(z - apply(z, 1, max))  # subtract max for numerical stability
+    probs <- exp_z / rowSums(exp_z)
+    return(probs)
   }
   
   # train data
   X_train <- matrix(runif(n_train * 2), ncol = 2)
-  eps_train <- rnorm(n_train)
-  z_train <- compute_z(X_train[, 1], X_train[, 2], eps_train)
+  eps_train <- matrix(rnorm(n_train * 3), ncol = 3) # 3 noises, one per class
   
-  # define quantile cut points based on z_train
-  q1 <- quantile(z_train, probs = 1/3)
-  q2 <- quantile(z_train, probs = 2/3)
-  
-  y_train <- cut(z_train, breaks = c(-Inf, q1, q2, Inf), labels = c(0, 1, 2))
-  y_train <- as.integer(as.character(y_train))
+  z_train <- cbind(
+    compute_z0(X_train[, 1], X_train[, 2], eps_train[,1]),
+    compute_z1(X_train[, 1], X_train[, 2], eps_train[,2]),
+    compute_z2(X_train[, 1], X_train[, 2], eps_train[,3])
+  )
   
   # test data
   X_test <- matrix(runif(n_test * 2), ncol = 2)
-  eps_test <- rnorm(n_test)
-  z_test <- compute_z(X_test[, 1], X_test[, 2], eps_test)
+  eps_test <- matrix(rnorm(n_test * 3), ncol = 3)
   
-  y_test <- cut(z_test, breaks = c(-Inf, q1, q2, Inf), labels = c(0, 1, 2))
-  y_test <- as.integer(as.character(y_test))
+  z_test <- cbind(
+    compute_z0(X_test[, 1], X_test[, 2], eps_test[,1]),
+    compute_z1(X_test[, 1], X_test[, 2], eps_test[,2]),
+    compute_z2(X_test[, 1], X_test[, 2], eps_test[,3])
+  )
+  
+  # compute probabilities via softmax
+  prob_train <- softmax(z_train)
+  prob_test <- softmax(z_test)
+  
+  # sample class labels based on probabilities
+  sample_classes <- function(prob_matrix) {
+    apply(prob_matrix, 1, function(p) sample(0:(length(p)-1), size = 1, prob = p))
+  }
+  
+  y_train <- sample_classes(prob_train)
+  y_test <- sample_classes(prob_test)
+  
+  list(
+    X_train = X_train,
+    y_train = y_train,
+    X_test = X_test,
+    y_test = y_test
+  )
+}
+
+# TEST WITH DISCONTINUITIES
+generate_dgp1_data_test <- function(n_train, n_test) {
+  
+  # helper functions: one latent function per class
+  compute_z0 <- function(x1, x2, eps) {
+    ifelse(x1 <= 0.5,
+           5 * sin(2 * pi * x1) + 3 * x2 + eps,
+           5 * sin(2 * pi * x1) - 3 * x2 + eps)
+  }
+  
+  compute_z1 <- function(x1, x2, eps) {
+    ifelse(x2 <= 0.3,
+           4 * cos(pi * x2) + x1 + eps,
+           8 * cos(pi * x2) - x1 + eps)
+  }
+  
+  compute_z2 <- function(x1, x2, eps) {
+    ifelse(x1 + x2 <= 1,
+           3 * sin(pi * (x1 + x2)) + eps,
+           7 * sin(pi * (x1 + x2)) + 2) + eps
+  }
+  
+  # softmax function
+  softmax <- function(z) {
+    exp_z <- exp(z - apply(z, 1, max))  # subtract max for numerical stability
+    probs <- exp_z / rowSums(exp_z)
+    return(probs)
+  }
+  
+  # train data
+  X_train <- matrix(runif(n_train * 2), ncol = 2)
+  eps_train <- matrix(rnorm(n_train * 3), ncol = 3) # 3 noises, one per class
+  
+  z_train <- cbind(
+    compute_z0(X_train[, 1], X_train[, 2], eps_train[,1]),
+    compute_z1(X_train[, 1], X_train[, 2], eps_train[,2]),
+    compute_z2(X_train[, 1], X_train[, 2], eps_train[,3])
+  )
+  
+  # test data
+  X_test <- matrix(runif(n_test * 2), ncol = 2)
+  eps_test <- matrix(rnorm(n_test * 3), ncol = 3)
+  
+  z_test <- cbind(
+    compute_z0(X_test[, 1], X_test[, 2], eps_test[,1]),
+    compute_z1(X_test[, 1], X_test[, 2], eps_test[,2]),
+    compute_z2(X_test[, 1], X_test[, 2], eps_test[,3])
+  )
+  
+  # compute probabilities via softmax
+  prob_train <- softmax(z_train)
+  prob_test <- softmax(z_test)
+  
+  # sample class labels based on probabilities
+  sample_classes <- function(prob_matrix) {
+    apply(prob_matrix, 1, function(p) sample(0:(length(p)-1), size = 1, prob = p))
+  }
+  
+  y_train <- sample_classes(prob_train)
+  y_test <- sample_classes(prob_test)
   
   list(
     X_train = X_train,
@@ -71,76 +167,117 @@ generate_dgp2_data <- function(n_train, n_test, p) {
   
   # generate predictors
   X_train <- matrix(runif(n_train * p), nrow = n_train, ncol = p)
-  X_test <- matrix(runif(n_test * p), nrow = n_test, ncol = p)
+  X_test  <- matrix(runif(n_test  * p), nrow = n_test,  ncol = p)
   
-  # latent function for Friedman #1
-  latent_fun <- function(X) {
+  # define latent functions
+  compute_z0 <- function(X) {
     10 * sin(pi * X[,1] * X[,2]) + 
       20 * (X[,3] - 0.5)^2 + 
       10 * X[,4] + 
       5 * X[,5]
   }
   
-  # generate latent variable with noise
-  z_train <- latent_fun(X_train) + rnorm(n_train)
-  z_test <- latent_fun(X_test) + rnorm(n_test)
+  compute_z1 <- function(X) {
+    8 * cos(pi * X[,1] * X[,3]) + 
+      15 * (X[,2] - 0.4)^2 + 
+      7 * X[,5] + 
+      3 * X[,4]
+  }
   
-  # compute quantile thresholds based on train latent variable
-  q1 <- quantile(z_train, probs = 1/3)
-  q2 <- quantile(z_train, probs = 2/3)
+  compute_z2 <- function(X) {
+    12 * sin(1.5 * pi * X[,2] * X[,3]) + 
+      10 * (X[,1] - 0.6)^2 + 
+      6 * X[,4] + 
+      8 * X[,5]
+  }
   
-  # compute classes 0,1,2 based on thresholds
-  y_train <- as.numeric(as.character(cut(z_train, breaks = c(-Inf, q1, q2, Inf), labels = c(0, 1, 2))))
-  y_test  <- as.numeric(as.character(cut(z_test,  breaks = c(-Inf, q1, q2, Inf), labels = c(0, 1, 2))))
+  # generate latent variables + noise for train and test
+  z_train <- cbind(
+    compute_z0(X_train) + rnorm(n_train),
+    compute_z1(X_train) + rnorm(n_train),
+    compute_z2(X_train) + rnorm(n_train)
+  )
+  
+  z_test <- cbind(
+    compute_z0(X_test) + rnorm(n_test),
+    compute_z1(X_test) + rnorm(n_test),
+    compute_z2(X_test) + rnorm(n_test)
+  )
+  
+  # softmax function
+  softmax <- function(z) {
+    exp_z <- exp(z - apply(z, 1, max))  # subtract max for numerical stability
+    probs <- exp_z / rowSums(exp_z)
+    return(probs)
+  }
+  
+  # Compute class probabilities
+  prob_train <- softmax(z_train)
+  prob_test <- softmax(z_test)
+  
+  # Sample classes vectorized using multinomial sampling
+  sample_classes <- function(prob_matrix) {
+    apply(prob_matrix, 1, function(p) sample(0:2, size = 1, prob = p))
+  }
+  
+  y_train <- sample_classes(prob_train)
+  y_test <- sample_classes(prob_test)
   
   list(
     X_train = X_train,
     y_train = y_train,
-    X_test = X_test,
-    y_test = y_test
+    X_test  = X_test,
+    y_test  = y_test
   )
 }
 
 # --------- DGP 3 DATA GENERATION --------
-generate_dgp3_data <- function(n_train, n_test, n_predictors, n_classes = 4,
-                                            lengthscale = 0.3, variance = 1.0) {
+
+#'@description Function which generates data for a single replication of DGP 3 (Gaussian process)
+#'
+#'@param n_train Number of training observations to be generated
+#'@param n_test Number of test observations to be generated
+#'@param n_predictors Number of predictors to include
+#'@param n_classes Number of class labels
+#'@param lengthscale Lengthscale parameter of the RBF kernel in the Gaussian process
+#'@param variance Variance parameter of the RBF kernel in the Gaussian process
+#'@return A list containing the following objects:
+#'\item{X_train}{Matrix of predictors for training data}
+#'\item{y_train}{Vector of responses for training data}
+#'\item{X_test}{Matrix of predictors for test data}
+#'\item{y_test}{Vector of responses for test data}
+generate_dgp3_data <- function(n_train, n_test, n_predictors = 6, n_classes = 4,
+                                            lengthscale = 0.5, variance = 1.0) {
   
   n_total <- n_train + n_test
   
   # generate uniform predictors
   X <- matrix(runif(n_total * n_predictors), nrow = n_total, ncol = n_predictors)
+  X_train <- X[1:n_train, , drop = FALSE]
+  X_test  <- X[(n_train + 1):n_total, , drop = FALSE]
   
-  # function to compute squared Euclidean distance matrix between rows of X
-  squared_dist_matrix <- function(X) {
-    sum_X <- rowSums(X^2)
-    outer(sum_X, sum_X, "+") - 2 * (X %*% t(X))
-  }
+  # compute full RBF kernel matrix
+  D2 <- rdist(X, X)^2
+  K <- variance * exp(-D2 / (2 * lengthscale^2))
   
-  # compute covariance matrix with multivariate RBF kernel
-  dists <- squared_dist_matrix(X)
-  Sigma <- variance * exp(-0.5 * dists / lengthscale^2)
+  # sample one latent function per class from multivariate normal
+  F_all <- t(mvrnorm(n_classes, mu = rep(0, n_total), Sigma = K))  # shape: n_total x n_classes
   
-  # generate latent functions for each class
-  latent_mat <- sapply(1:n_classes, function(k) {
-    mvrnorm(1, mu = rep(0, n_total), Sigma = Sigma)
-  })
-  
-  # softmax function for class probabilities
+  # apply softmax row-wise
   softmax <- function(F) {
-    expF <- exp(F - apply(F, 1, max)) # for numerical stability
+    expF <- exp(F - apply(F, 1, max))  
     expF / rowSums(expF)
   }
-  probs <- softmax(latent_mat)
+  P_all <- softmax(F_all)
   
-  # sample class labels
-  y <- apply(probs, 1, function(p) sample(1:n_classes, size = 1, prob = p))
-  y <- y - 1  # convert to 0-based class labeling
+  # sample class labels (0-based)
+  sample_labels <- function(P) {
+    apply(P, 1, function(p) sample(0:(n_classes - 1), size = 1, prob = p))
+  }
   
-  # Split train/test
-  X_train <- X[1:n_train, , drop = FALSE]
-  y_train <- y[1:n_train]
-  X_test <- X[(n_train + 1):n_total, , drop = FALSE]
-  y_test <- y[(n_train + 1):n_total]
+  y_all <- sample_labels(P_all)
+  y_train <- y_all[1:n_train]
+  y_test  <- y_all[(n_train + 1):n_total]
   
   list(
     X_train = X_train,
@@ -159,7 +296,7 @@ generate_dgp3_data <- function(n_train, n_test, n_predictors, n_classes = 4,
 #'@param which_dgp The DGP from which data is generated
 run_method <- function(method, sim_data, which_dgp) {
   
-  if (which_dgp == "dgp1") {
+  if (which_dgp == "dgp1" || which_dgp == "dgp1copy") {
     num_classes <- 3
     mtry_grid <- c(1,2)
   } else if (which_dgp == "dgp2") {
@@ -168,6 +305,9 @@ run_method <- function(method, sim_data, which_dgp) {
   } else if (which_dgp == "dgp2extranoise") {
     num_classes <- 3
     mtry_grid <- c(2, 4, 8, 15, 30, 50)
+  } else if (which_dgp == "dgp3") {
+    num_classes <- 4
+    mtry_grid <- c(1, 2, 3, 4, 5, 6)
   } else {
       stop("Run with a correct DGP. Choose from 'dgp1', 'dgp2', 'dgp2extranoise', 'dgp3'")
   }
