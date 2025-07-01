@@ -55,9 +55,9 @@ run_method <- function(method, data, which_dataset, seed) {
     num_folds <- 10
     mtry_grid <- c(1, 2, 3, 4)
   } else if (which_dataset == "wine") {
-    num_classes <- 6
-    num_folds <- 5
-    mtry_grid <- c(1, 2, 3, 4)
+    num_classes <- 3
+    num_folds <- 10
+    mtry_grid <- c(2, 3, 4, 5, 8, 12)
   } else {
     stop("Run with a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine'")
   }
