@@ -367,7 +367,13 @@ run_method <- function(method, sim_data, which_dgp) {
       )
       pred_output <- soft_mpbart_predict(predictions_z = mcmc_output$mu_test_draws)
     } else if (method == "mpbart") {
-        stop()
+        pred_output <- mpbart(X_train = X_train,
+                              y_train = y_train,
+                              X_test = X_test,
+                              num_burnin = 1500,
+                              num_sim = 1500,
+                              num_classes = num_classes
+      )
     } else if (method == "rf") {
         pred_output <- rf_multiclass_cv(X_train = X_train, y_train = y_train, X_test = X_test, mtry_grid = mtry_grid)
     } else {

@@ -7,7 +7,6 @@ library(GcompBART)
 mpbart <- function(X_train, # matrix of covariates - training data
                    y_train, # vector of class labels - training data
                    X_test, # matrix of covariates - test data
-                   y_test, # vector of class labels - test data
                    num_burnin = 1500,
                    num_sim = 1500,
                    num_trees = 200,
@@ -49,36 +48,24 @@ mpbart <- function(X_train, # matrix of covariates - training data
   predict_obj <- predict_bart(obj = model_fit, newdata = as.data.frame(X_test))
   
   # extract results
-  samp_y <- predict_obj$samp_y  # ndraws x n matrix
-  ndraws <- nrow(samp_y)
-  n_test <- ncol(samp_y)
-  classes <- sort(unique(y_train))  # class labels, e.g. 0, 1, 2
+  samp_y <- predict_obj$samp_y  # ndraws x n matrix of predicted class labels
+  classes <- 0:(num_classes - 1)
   
-  # Compute posterior class probabilities: n_test x num_classes
+  # compute posterior class probabilities: n_test x num_classes
   class_probs <- sapply(classes, function(k) {
     colMeans(samp_y == k)
   })
-  
-  # Ensure class_probs is a matrix with rows = test samples, columns = classes
   class_probs <- as.matrix(class_probs)
   colnames(class_probs) <- paste0("class_", classes)
   
-  # Predicted class = class with highest posterior probability
-  y_pred <- apply(class_probs, 1, function(row) classes[which.max(row)])
+  # predicted class = class with highest posterior probability
+  pred_y <- apply(class_probs, 1, function(row) classes[which.max(row)])
   
-  # Compute metrics
-  err <- test_error_rate(y_test, y_pred)
-  brier <- brier_score_multiclass(y_test, class_probs)
+  return_list = list(
+    pred_y = pred_y,
+    post_probs = class_probs
+  )
   
-  # Return everything
-  return(list(
-    model_fit = model_fit,
-    predicted_class = y_pred,
-    predicted_prob = class_probs,
-    test_error = err,
-    brier_score = brier
-  ))
-  
-  
+  return(return_list)
 }
 
