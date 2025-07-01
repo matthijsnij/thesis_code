@@ -246,45 +246,67 @@ generate_dgp2_data <- function(n_train, n_test, p) {
 #'\item{y_train}{Vector of responses for training data}
 #'\item{X_test}{Matrix of predictors for test data}
 #'\item{y_test}{Vector of responses for test data}
-generate_dgp3_data <- function(n_train, n_test, n_predictors = 6, n_classes = 4,
-                                            lengthscale = 0.5, variance = 1.0) {
+generate_dgp3_data <- function(n_train, n_test, 
+                               n_predictors = 3, 
+                               n_classes = 3,
+                               lengthscale_base = 1.0, 
+                               variance_base = 1.0,
+                               lengthscale_class = 0.5,
+                               variance_class = 1.0,
+                               shift_logits = TRUE) {
   
   n_total <- n_train + n_test
   
-  # generate uniform predictors
+  # 1. Generate predictors uniformly on [0, 1]
   X <- matrix(runif(n_total * n_predictors), nrow = n_total, ncol = n_predictors)
   X_train <- X[1:n_train, , drop = FALSE]
   X_test  <- X[(n_train + 1):n_total, , drop = FALSE]
   
-  # compute full RBF kernel matrix
+  # 2. Compute pairwise squared distances
   D2 <- rdist(X, X)^2
-  K <- variance * exp(-D2 / (2 * lengthscale^2))
   
-  # sample one latent function per class from multivariate normal
-  F_all <- t(mvrnorm(n_classes, mu = rep(0, n_total), Sigma = K))  # shape: n_total x n_classes
+  # 3. Base GP kernel (shared structure)
+  K_base <- variance_base * exp(-D2 / (2 * lengthscale_base^2))
+  f_base <- mvrnorm(1, mu = rep(0, n_total), Sigma = K_base)  # shared across classes
   
-  # apply softmax row-wise
+  # 4. Class-specific GPs
+  K_class <- variance_class * exp(-D2 / (2 * lengthscale_class^2))
+  F_all <- matrix(0, nrow = n_total, ncol = n_classes)
+  
+  for (k in 1:n_classes) {
+    delta_k <- mvrnorm(1, mu = rep(0, n_total), Sigma = K_class)
+    F_all[, k] <- f_base + delta_k
+  }
+  
+  # optional: add class-specific shift to logits (for class separation)
+  if (shift_logits) {
+    shifts <- seq(-n_classes + 1, n_classes - 1, by = 2)  # e.g., -2, 0, 2 for 3 classes
+    F_all <- sweep(F_all, 2, shifts, "+")
+  }
+  
+  # softmax function for class probabilities
   softmax <- function(F) {
-    expF <- exp(F - apply(F, 1, max))  
+    expF <- exp(F - apply(F, 1, max))  # numerical stability
     expF / rowSums(expF)
   }
   P_all <- softmax(F_all)
   
-  # sample class labels (0-based)
+  # sample class labels
   sample_labels <- function(P) {
     apply(P, 1, function(p) sample(0:(n_classes - 1), size = 1, prob = p))
   }
-  
   y_all <- sample_labels(P_all)
   y_train <- y_all[1:n_train]
   y_test  <- y_all[(n_train + 1):n_total]
   
-  list(
+  result <- list(
     X_train = X_train,
     y_train = y_train,
     X_test = X_test,
     y_test = y_test
   )
+  
+  return(result)
 }
 
 # --------- RUN METHOD ON SIMULATED DATA ----------
@@ -306,8 +328,8 @@ run_method <- function(method, sim_data, which_dgp) {
     num_classes <- 3
     mtry_grid <- c(2, 4, 8, 15, 30, 50)
   } else if (which_dgp == "dgp3") {
-    num_classes <- 4
-    mtry_grid <- c(1, 2, 3, 4, 5, 6)
+    num_classes <- 3
+    mtry_grid <- c(1, 2, 3)
   } else {
       stop("Run with a correct DGP. Choose from 'dgp1', 'dgp2', 'dgp2extranoise', 'dgp3'")
   }

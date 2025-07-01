@@ -24,6 +24,10 @@ vehicle_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/veh
 vehicle_y <- vehicle_data[[ncol(vehicle_data)]]
 vehicle_X <- as.matrix(vehicle_data[, 1:(ncol(vehicle_data)-1)])
 
+vowel_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/vowel/vowel-context.data', header = TRUE)
+vowel_y <- vowel_data[[ncol(vowel_data)]]
+vowel_X <- as.matrix(vowel_data[, 1:(ncol(vowel_data)-1)])
+
 # ------------ PREPROCESS DATA -------------
 
 # -- GLASS --
@@ -94,6 +98,10 @@ for (i in 1:length(vehicle_y)) {
 vehicle_y <- as.numeric(vehicle_y)
 vehicle_X_norm <- rank_normalize(vehicle_X)
 
+# -- VOWEL --
+
+# normalize covariates
+vowel_X_norm <- rank_normalize(vowel_X)
 
 # --------- SAVE PREPROCESSED DATA SETS -------------
 write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
@@ -101,6 +109,7 @@ write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth
 write.table(as.data.frame(cbind(iris_X_norm, iris_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/iris_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(wine_X_norm, wine_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/wine_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(vehicle_X_norm, vehicle_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vehicle_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+write.table(as.data.frame(cbind(vowel_X_norm, vowel_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vowel_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 
