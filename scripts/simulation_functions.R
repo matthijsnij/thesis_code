@@ -281,11 +281,6 @@ generate_dgp3_data <- function(n_train, n_test,
   }
   P_all <- softmax(F_all)
   
-  # Compute average entropy of the predicted class probabilities
-  row_entropy <- function(p) -sum(p * log(p + 1e-12))
-  avg_entropy <- mean(apply(P_all, 1, row_entropy))
-  cat(sprintf("Average entropy of class probabilities: %.4f\n", avg_entropy))
-  
   # sample class labels
   sample_labels <- function(P) {
     apply(P, 1, function(p) sample(0:(n_classes - 1), size = 1, prob = p))
