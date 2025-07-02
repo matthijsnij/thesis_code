@@ -3,24 +3,25 @@
 
 library(openxlsx)
 source("soft_mpbart.R")
+source("mpbart.R")
 source("random_forest.R")
 source("simulation_functions.R")
 
 # -------- SET SEED AND PARAMS --------
 
-seed <- 345 # 234 for normal, 345 for extra noise
+seed <- 234 # 234 for normal, 345 for extra noise
 set.seed(seed)  # for reproducibility
 
 n_train <- 500
 n_test <- 1000
 n_rep <- 10
-method <- "smpbart"   # choose from "smpbart", "mpbart","rf"
-dgp2_setting <- "dgp2extranoise" # choose from 'dgp2' and 'dgp2extranoise'
+method <- "mpbart"   # choose from "smpbart", "mpbart","rf"
+dgp2_setting <- "dgp2" # choose from 'dgp2' and 'dgp2extranoise'
 
 # ------ GENERATE DATA -----
 
 # generate replications
-n_extra_noise <- 45 # number of extra noise predictors to include
+n_extra_noise <- 0 # number of extra noise predictors to include
 dgp2_data <- lapply(1:n_rep, function(i) generate_dgp2_data(n_train, n_test, p = (10 + n_extra_noise)))
 
 # write all generated data to excel

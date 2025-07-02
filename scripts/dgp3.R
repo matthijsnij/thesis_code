@@ -3,6 +3,7 @@
 
 library(openxlsx)
 source("soft_mpbart.R")
+source("mpbart.R")
 source("random_forest.R")
 source("simulation_functions.R")
 

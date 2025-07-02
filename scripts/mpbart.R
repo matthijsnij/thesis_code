@@ -31,8 +31,8 @@ mpbart <- function(X_train, # matrix of covariates - training data
   # mcmc settings
   Mcmc <- list(burn = num_burnin, ndraws = num_sim)
   
-  df_train <- data.frame(y = y_train, X_train)
-  reference_class <- 0 # reference level
+  df_train <- data.frame(y = factor(y_train, levels = 0:(num_classes - 1)), X_train)
+  reference_class <- "0" # reference level
   
   # fit MPBART
   model_fit <- model_bart(formula = y ~ ., 
@@ -48,7 +48,7 @@ mpbart <- function(X_train, # matrix of covariates - training data
   predict_obj <- predict_bart(obj = model_fit, newdata = as.data.frame(X_test))
   
   # extract results
-  samp_y <- predict_obj$samp_y  # ndraws x n matrix of predicted class labels
+  samp_y <- t(predict_obj$samp_y)  # ndraws x n matrix of predicted class labels
   classes <- 0:(num_classes - 1)
   
   # compute posterior class probabilities: n_test x num_classes

@@ -4,6 +4,7 @@ library(glue)
 library(openxlsx)
 library(MASS)
 library(fields)
+source("soft_mpbart.R")
 
 # -------- DGP 1 DATA GENERATION -------
 
@@ -233,71 +234,73 @@ generate_dgp2_data <- function(n_train, n_test, p) {
 
 # --------- DGP 3 DATA GENERATION --------
 
-#'@description Function which generates data for a single replication of DGP 3 (Gaussian process)
+#'@description Function which generates data for a single replication of DGP 3 
 #'
 #'@param n_train Number of training observations to be generated
 #'@param n_test Number of test observations to be generated
 #'@param n_predictors Number of predictors to include
 #'@param n_classes Number of class labels
-#'@param lengthscale Lengthscale parameter of the RBF kernel in the Gaussian process
-#'@param variance Variance parameter of the RBF kernel in the Gaussian process
 #'@return A list containing the following objects:
 #'\item{X_train}{Matrix of predictors for training data}
 #'\item{y_train}{Vector of responses for training data}
 #'\item{X_test}{Matrix of predictors for test data}
 #'\item{y_test}{Vector of responses for test data}
-generate_dgp3_data <- function(n_train, n_test, 
-                               n_predictors = 3, 
-                               n_classes = 3,
-                               lengthscale_base = 1.0, 
-                               variance_base = 1.0,
-                               lengthscale_class = 0.5,
-                               variance_class = 1.0,
-                               shift_logits = TRUE) {
+generate_dgp3_data <- function(n_train, n_test,
+                                  n_predictors = 8,
+                                  n_classes = 3) {
   
   n_total <- n_train + n_test
   
-  # 1. Generate predictors uniformly on [0, 1]
-  X <- matrix(runif(n_total * n_predictors), nrow = n_total, ncol = n_predictors)
-  X_train <- X[1:n_train, , drop = FALSE]
-  X_test  <- X[(n_train + 1):n_total, , drop = FALSE]
+  # latent variable z governs all structure (smooth and 1D)
+  z <- runif(n_total, min = 0, max = 2 * pi)
   
-  # 2. Compute pairwise squared distances
-  D2 <- rdist(X, X)^2
+  # predictors: smooth nonlinear transformations of z
+  X <- matrix(0, nrow = n_total, ncol = n_predictors)
+  if (n_predictors >= 1) X[, 1] <- sin(z)
+  if (n_predictors >= 2) X[, 2] <- cos(2 * z)
+  if (n_predictors >= 3) X[, 3] <- z^2
+  if (n_predictors >= 4) X[, 4] <- exp(-z)
+  if (n_predictors >= 5) X[, 5] <- sin(3 * z)
+  if (n_predictors >= 6) X[, 6] <- cos(5 * z)
+  if (n_predictors >= 7) X[, 7] <- log(z + 1e-2)
+  if (n_predictors >= 8) X[, 8] <- sqrt(z)
   
-  # 3. Base GP kernel (shared structure)
-  K_base <- variance_base * exp(-D2 / (2 * lengthscale_base^2))
-  f_base <- mvrnorm(1, mu = rep(0, n_total), Sigma = K_base)  # shared across classes
-  
-  # 4. Class-specific GPs
-  K_class <- variance_class * exp(-D2 / (2 * lengthscale_class^2))
+  # class-specific latent functions (smooth functions of z)
   F_all <- matrix(0, nrow = n_total, ncol = n_classes)
+  F_all[, 1] <- sin(z)
+  F_all[, 2] <- cos(z)
+  F_all[, 3] <- exp(- (z - pi)^2)
   
-  for (k in 1:n_classes) {
-    delta_k <- mvrnorm(1, mu = rep(0, n_total), Sigma = K_class)
-    F_all[, k] <- f_base + delta_k
-  }
+  shifts <- c(-2, 0, 2)
+  F_all <- sweep(F_all, 2, shifts, "+")
   
-  # optional: add class-specific shift to logits (for class separation)
-  if (shift_logits) {
-    shifts <- seq(-n_classes + 1, n_classes - 1, by = 2)  # e.g., -2, 0, 2 for 3 classes
-    F_all <- sweep(F_all, 2, shifts, "+")
-  }
-  
-  # softmax function for class probabilities
+  # Softmax function
   softmax <- function(F) {
-    expF <- exp(F - apply(F, 1, max))  # numerical stability
+    expF <- exp(F - apply(F, 1, max))  # for numerical stability
     expF / rowSums(expF)
   }
   P_all <- softmax(F_all)
+  
+  # Compute average entropy of the predicted class probabilities
+  row_entropy <- function(p) -sum(p * log(p + 1e-12))
+  avg_entropy <- mean(apply(P_all, 1, row_entropy))
+  cat(sprintf("Average entropy of class probabilities: %.4f\n", avg_entropy))
   
   # sample class labels
   sample_labels <- function(P) {
     apply(P, 1, function(p) sample(0:(n_classes - 1), size = 1, prob = p))
   }
+  
   y_all <- sample_labels(P_all)
   y_train <- y_all[1:n_train]
   y_test  <- y_all[(n_train + 1):n_total]
+  
+  X_train <- X[1:n_train, , drop = FALSE]
+  X_test  <- X[(n_train + 1):n_total, , drop = FALSE]
+  
+  # rank normalize predictors
+  X_train <- rank_normalize(X_train)
+  X_test <- rank_normalize(X_test)
   
   result <- list(
     X_train = X_train,
@@ -329,7 +332,7 @@ run_method <- function(method, sim_data, which_dgp) {
     mtry_grid <- c(2, 4, 8, 15, 30, 50)
   } else if (which_dgp == "dgp3") {
     num_classes <- 3
-    mtry_grid <- c(1, 2, 3)
+    mtry_grid <- c(2, 3, 4, 6, 8)
   } else {
       stop("Run with a correct DGP. Choose from 'dgp1', 'dgp2', 'dgp2extranoise', 'dgp3'")
   }
