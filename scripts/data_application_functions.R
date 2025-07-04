@@ -13,7 +13,7 @@ library(openxlsx)
 #'\item{y}{Vector of observed class labels}
 read_data <- function(dataset) {
   
-  all_datasets <- c("glass", "vertebral", "iris", "wine", "vehicle", "vowel")
+  all_datasets <- c("glass", "vertebral", "iris", "wine", "vehicle", "vowel", "waveform")
   
   if (!(dataset %in% all_datasets)) {
     stop("Please input a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine', 'vehicle', 'vowel'")
@@ -66,8 +66,12 @@ run_method <- function(method, data, which_dataset, seed) {
     num_classes <- 11
     num_folds <- 5
     mtry_grid <- c(2, 3, 4, 6, 10)
+  } else if (which_dataset == "waveform") {
+    num_classes <- 3
+    num_folds <- 5
+    mtry_grid <- c(2, 4, 5, 6, 10, 15, 21)
   } else {
-    stop("Run with a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine', 'vehicle', 'vowel'")
+    stop("Run with a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine', 'vehicle', 'vowel', 'waveform")
   }
   
   # to store error rates and brier scores

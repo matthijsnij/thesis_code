@@ -3,17 +3,18 @@
 
 library(openxlsx)
 source("soft_mpbart.R")
+source("mpbart.R")
 source("random_forest.R")
 source("data_application_functions.R")
 
 # ---- READ DATA -----
 
 # specify which data set to run
-dataset <- "vowel"   # choose from "glass", "vertebral", "iris", "wine", "vehicle"
+dataset <- "waveform"   # choose from "glass", "vertebral", "iris", "wine", "vehicle", "vowel", "waveform"
 data <- read_data(dataset = dataset)
 
 # specify which method to run
-method <- "smpbart"  # choose from "smpbart", "mpbart","rf"
+method <- "rf"  # choose from "smpbart", "mpbart","rf"
 
 # ---- RUN METHOD ON TRAIN/TEST SPLITS OF REAL DATA -----
 seed <- 123

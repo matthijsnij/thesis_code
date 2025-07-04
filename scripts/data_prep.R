@@ -28,6 +28,10 @@ vowel_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/vowel
 vowel_y <- vowel_data[[ncol(vowel_data)]]
 vowel_X <- as.matrix(vowel_data[, 1:(ncol(vowel_data)-1)])
 
+waveform_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/waveform/waveform.data', header = TRUE, sep = ",")
+waveform_y <- waveform_data[[ncol(waveform_data)]]
+waveform_X <- as.matrix(waveform_data[, 1:(ncol(waveform_data)-1)])
+
 # ------------ PREPROCESS DATA -------------
 
 # -- GLASS --
@@ -103,6 +107,9 @@ vehicle_X_norm <- rank_normalize(vehicle_X)
 # normalize covariates
 vowel_X_norm <- rank_normalize(vowel_X)
 
+# -- WAVEFORM --
+waveform_X_norm <- rank_normalize(waveform_X)
+
 # --------- SAVE PREPROCESSED DATA SETS -------------
 write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
@@ -110,6 +117,7 @@ write.table(as.data.frame(cbind(iris_X_norm, iris_y)), "C:/Users/matth/OneDrive/
 write.table(as.data.frame(cbind(wine_X_norm, wine_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/wine_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(vehicle_X_norm, vehicle_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vehicle_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(vowel_X_norm, vowel_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vowel_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+write.table(as.data.frame(cbind(waveform_X_norm, waveform_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/waveform_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 
