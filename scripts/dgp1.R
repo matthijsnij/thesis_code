@@ -16,12 +16,12 @@ n_train <- 500
 n_test <- 1000
 n_rep <- 10
 
-method <- "mpbart"   # choose from "smpbart", "mpbart","rf"
+method <- "smpbart"   # choose from "smpbart", "mpbart","rf"
 
 # ------ GENERATE DATA -----
 
 # generate replications
-dgp1_data <- lapply(1:n_rep, function(i) generate_dgp1_data_test(n_train, n_test))
+dgp1_data <- lapply(1:n_rep, function(i) generate_dgp1_data(n_train, n_test))
 
 # write all generated data to excel
 #write_data(n_rep = n_rep, all_data = dgp1_data, which_dgp = "dgp1", seed = seed)

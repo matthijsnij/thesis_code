@@ -20,69 +20,6 @@ source("soft_mpbart.R")
 generate_dgp1_data <- function(n_train, n_test) {
   
   # helper functions: one latent function per class
-  compute_z0 <- function(x1, x2, epsilon) {
-    5 * sin(2 * pi * x1) + 3 * x2 + epsilon
-  }
-  
-  compute_z1 <- function(x1, x2, epsilon) {
-    5 * cos(2 * pi * x1) - 2 * x2 + epsilon
-  }
-  
-  compute_z2 <- function(x1, x2, epsilon) {
-    3 * sin(4 * pi * x1) + x2^2 + epsilon
-  }
-  
-  # softmax function
-  softmax <- function(z) {
-    exp_z <- exp(z - apply(z, 1, max))  # subtract max for numerical stability
-    probs <- exp_z / rowSums(exp_z)
-    return(probs)
-  }
-  
-  # train data
-  X_train <- matrix(runif(n_train * 2), ncol = 2)
-  eps_train <- matrix(rnorm(n_train * 3), ncol = 3) # 3 noises, one per class
-  
-  z_train <- cbind(
-    compute_z0(X_train[, 1], X_train[, 2], eps_train[,1]),
-    compute_z1(X_train[, 1], X_train[, 2], eps_train[,2]),
-    compute_z2(X_train[, 1], X_train[, 2], eps_train[,3])
-  )
-  
-  # test data
-  X_test <- matrix(runif(n_test * 2), ncol = 2)
-  eps_test <- matrix(rnorm(n_test * 3), ncol = 3)
-  
-  z_test <- cbind(
-    compute_z0(X_test[, 1], X_test[, 2], eps_test[,1]),
-    compute_z1(X_test[, 1], X_test[, 2], eps_test[,2]),
-    compute_z2(X_test[, 1], X_test[, 2], eps_test[,3])
-  )
-  
-  # compute probabilities via softmax
-  prob_train <- softmax(z_train)
-  prob_test <- softmax(z_test)
-  
-  # sample class labels based on probabilities
-  sample_classes <- function(prob_matrix) {
-    apply(prob_matrix, 1, function(p) sample(0:(length(p)-1), size = 1, prob = p))
-  }
-  
-  y_train <- sample_classes(prob_train)
-  y_test <- sample_classes(prob_test)
-  
-  list(
-    X_train = X_train,
-    y_train = y_train,
-    X_test = X_test,
-    y_test = y_test
-  )
-}
-
-# TEST WITH DISCONTINUITIES
-generate_dgp1_data_test <- function(n_train, n_test) {
-  
-  # helper functions: one latent function per class
   compute_z0 <- function(x1, x2, eps) {
     ifelse(x1 <= 0.5,
            5 * sin(2 * pi * x1) + 3 * x2 + eps,
@@ -101,13 +38,6 @@ generate_dgp1_data_test <- function(n_train, n_test) {
            7 * sin(pi * (x1 + x2)) + 2) + eps
   }
   
-  # softmax function
-  softmax <- function(z) {
-    exp_z <- exp(z - apply(z, 1, max))  # subtract max for numerical stability
-    probs <- exp_z / rowSums(exp_z)
-    return(probs)
-  }
-  
   # train data
   X_train <- matrix(runif(n_train * 2), ncol = 2)
   eps_train <- matrix(rnorm(n_train * 3), ncol = 3) # 3 noises, one per class
@@ -128,17 +58,13 @@ generate_dgp1_data_test <- function(n_train, n_test) {
     compute_z2(X_test[, 1], X_test[, 2], eps_test[,3])
   )
   
-  # compute probabilities via softmax
-  prob_train <- softmax(z_train)
-  prob_test <- softmax(z_test)
-  
-  # sample class labels based on probabilities
-  sample_classes <- function(prob_matrix) {
-    apply(prob_matrix, 1, function(p) sample(0:(length(p)-1), size = 1, prob = p))
+  # assign class labels as the index of max latent value per row (subtract 1 to have classes 0,1,2)
+  assign_class <- function(z_matrix) {
+    apply(z_matrix, 1, function(z) which.max(z) - 1)
   }
   
-  y_train <- sample_classes(prob_train)
-  y_test <- sample_classes(prob_test)
+  y_train <- assign_class(z_train)
+  y_test <- assign_class(z_test)
   
   list(
     X_train = X_train,
@@ -154,7 +80,7 @@ generate_dgp1_data_test <- function(n_train, n_test) {
 #'
 #'@param n_train Number of training observations to be generated
 #'@param n_test Number of test observations to be generated
-#'@param p Number of predictors to include. Should be at least 5. Any additional predictors are noise predictors.
+#'@param p Number of predictors to include. Should be at least 10. Any additional predictors are noise predictors.
 #'@return A list containing the following objects:
 #'\item{X_train}{Matrix of predictors for training data}
 #'\item{y_train}{Vector of responses for training data}
@@ -162,8 +88,8 @@ generate_dgp1_data_test <- function(n_train, n_test) {
 #'\item{y_test}{Vector of responses for test data}
 generate_dgp2_data <- function(n_train, n_test, p) {
   
-  if (p < 5) {
-    stop("p should be larger or equal to 5")
+  if (p < 10) {
+    stop("p should be larger or equal to 10")
   }
   
   # generate predictors
@@ -179,17 +105,17 @@ generate_dgp2_data <- function(n_train, n_test, p) {
   }
   
   compute_z1 <- function(X) {
-    8 * cos(pi * X[,1] * X[,3]) + 
-      15 * (X[,2] - 0.4)^2 + 
-      7 * X[,5] + 
-      3 * X[,4]
+    8 * cos(pi * X[,6] * X[,7]) + 
+      15 * (X[,8] - 0.4)^2 + 
+      7 * X[,9] + 
+      3 * X[,10]
   }
   
   compute_z2 <- function(X) {
-    12 * sin(1.5 * pi * X[,2] * X[,3]) + 
-      10 * (X[,1] - 0.6)^2 + 
-      6 * X[,4] + 
-      8 * X[,5]
+    12 * sin(1.5 * pi * X[,3] * X[,8]) + 
+      10 * (X[,5] - 0.6)^2 + 
+      6 * X[,1] + 
+      8 * X[,7]
   }
   
   # generate latent variables + noise for train and test
@@ -204,25 +130,13 @@ generate_dgp2_data <- function(n_train, n_test, p) {
     compute_z1(X_test) + rnorm(n_test),
     compute_z2(X_test) + rnorm(n_test)
   )
-  
-  # softmax function
-  softmax <- function(z) {
-    exp_z <- exp(z - apply(z, 1, max))  # subtract max for numerical stability
-    probs <- exp_z / rowSums(exp_z)
-    return(probs)
+
+  assign_class <- function(z_matrix) {
+    apply(z_matrix, 1, function(z) which.max(z) - 1)
   }
   
-  # Compute class probabilities
-  prob_train <- softmax(z_train)
-  prob_test <- softmax(z_test)
-  
-  # Sample classes vectorized using multinomial sampling
-  sample_classes <- function(prob_matrix) {
-    apply(prob_matrix, 1, function(p) sample(0:2, size = 1, prob = p))
-  }
-  
-  y_train <- sample_classes(prob_train)
-  y_test <- sample_classes(prob_test)
+  y_train <- assign_class(z_train)
+  y_test <- assign_class(z_test)
   
   list(
     X_train = X_train,
@@ -324,7 +238,7 @@ run_method <- function(method, sim_data, which_dgp) {
     mtry_grid <- c(2, 3, 4, 6, 8, 10)
   } else if (which_dgp == "dgp2extranoise") {
     num_classes <- 3
-    mtry_grid <- c(2, 4, 8, 15, 30, 50)
+    mtry_grid <- c(2, 4, 8, 15, 30, 60)
   } else if (which_dgp == "dgp3") {
     num_classes <- 3
     mtry_grid <- c(2, 3, 4, 6, 8)
