@@ -1,6 +1,9 @@
 # Loading and preprocessing data sets for S-MPBART
 
 source("soft_mpbart.R")
+source("data_application_functions.R")
+library(AER)
+library(mlogit)
 
 # ------------ READ DATA ---------------
 
@@ -31,6 +34,17 @@ vowel_X <- as.matrix(vowel_data[, 1:(ncol(vowel_data)-1)])
 waveform_data <- read.csv('C:/Users/matth/OneDrive/Bureaublad/msc_thesis/Data/waveform/waveform.data', header = TRUE, sep = ",")
 waveform_y <- waveform_data[[ncol(waveform_data)]]
 waveform_X <- as.matrix(waveform_data[, 1:(ncol(waveform_data)-1)])
+
+data("TravelMode")
+travel_data <- prep_travelmode(TravelMode)
+travel_y <- travel_data$y
+travel_X <- travel_data$X
+
+data("Fishing", package = "mlogit")
+fishing_y <- Fishing[[1]]
+fishing_X <- as.matrix(Fishing[, 2:ncol(Fishing)])
+
+
 
 # ------------ PREPROCESS DATA -------------
 
@@ -110,6 +124,16 @@ vowel_X_norm <- rank_normalize(vowel_X)
 # -- WAVEFORM --
 waveform_X_norm <- rank_normalize(waveform_X)
 
+# -- TRAVEL MODE --
+travel_X_norm <- rank_normalize(travel_X)
+
+# -- FISHING --
+# change class labels to 0 = beach, 1 = pier, 2 = boat, 3 = charter
+fishing_y <- as.integer(fishing_y) - 1
+
+fishing_X_norm <- rank_normalize(fishing_X)
+
+
 # --------- SAVE PREPROCESSED DATA SETS -------------
 write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
@@ -118,6 +142,8 @@ write.table(as.data.frame(cbind(wine_X_norm, wine_y)), "C:/Users/matth/OneDrive/
 write.table(as.data.frame(cbind(vehicle_X_norm, vehicle_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vehicle_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(vowel_X_norm, vowel_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vowel_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(as.data.frame(cbind(waveform_X_norm, waveform_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/waveform_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+write.table(as.data.frame(cbind(travel_X_norm, travel_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/travel_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+write.table(as.data.frame(cbind(fishing_X_norm, fishing_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/fishing_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 

@@ -10,11 +10,11 @@ source("data_application_functions.R")
 # ---- READ DATA -----
 
 # specify which data set to run
-dataset <- "waveform"   # choose from "glass", "vertebral", "iris", "wine", "vehicle", "vowel", "waveform"
+dataset <- "fishing"   # choose from "glass", "vertebral", "iris", "wine", "vehicle", "vowel", "travel"
 data <- read_data(dataset = dataset)
 
 # specify which method to run
-method <- "rf"  # choose from "smpbart", "mpbart","rf"
+method <- "mpbart"  # choose from "smpbart", "mpbart","rf"
 
 # ---- RUN METHOD ON TRAIN/TEST SPLITS OF REAL DATA -----
 seed <- 123

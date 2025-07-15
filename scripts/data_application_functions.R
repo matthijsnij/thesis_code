@@ -13,10 +13,10 @@ library(openxlsx)
 #'\item{y}{Vector of observed class labels}
 read_data <- function(dataset) {
   
-  all_datasets <- c("glass", "vertebral", "iris", "wine", "vehicle", "vowel", "waveform")
+  all_datasets <- c("glass", "vertebral", "iris", "wine", "vehicle", "vowel", "waveform", "travel", "fishing")
   
   if (!(dataset %in% all_datasets)) {
-    stop("Please input a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine', 'vehicle', 'vowel'")
+    stop("Please input a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine', 'vehicle', 'vowel', 'waveform', 'travel', 'fishing'")
   }
   
   path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/{dataset}_preprocessed.csv")
@@ -70,8 +70,16 @@ run_method <- function(method, data, which_dataset, seed) {
     num_classes <- 3
     num_folds <- 5
     mtry_grid <- c(2, 4, 5, 6, 10, 15, 21)
+  } else if (which_dataset == "travel") {
+    num_classes <- 4
+    num_folds <- 10
+    mtry_grid <- c(2, 3, 4, 8, 12, 18)
+  } else if (which_dataset == "fishing") {
+    num_classes <- 4
+    num_folds <- 5
+    mtry_grid <- c(2, 3, 4, 6, 9)
   } else {
-    stop("Run with a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine', 'vehicle', 'vowel', 'waveform")
+    stop("Run with a correct dataset. Choose from 'glass', 'vertebral', 'iris', 'wine', 'vehicle', 'vowel', 'waveform', 'travel', 'fishing'")
   }
   
   # to store error rates and brier scores
@@ -134,4 +142,62 @@ run_method <- function(method, data, which_dataset, seed) {
   
   path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/{method}_{which_dataset}_output.xlsx")
   saveWorkbook(wb_output, path, overwrite = TRUE)
+}
+
+# ------ PREP TRAVEL MODE DATA SET ------
+
+#'@description Function which prepares the travel mode in the correct format for all methods, 'wide' format for choice specific predictors
+#'
+#'@param df The original travel mode dataframe as loaded from AER package
+#'@return A list containing:
+#'\item{X}{Matrix of all predictors, both choice-specific and individual}
+#'\item{y}{Vector of 0-based class labels}
+prep_travelmode <- function(df) {
+  
+  # drop 'individual' column
+  df$individual <- NULL
+  
+  choice_var <- "choice"
+  alt_id_var <- "mode"
+  individual_vars <- c("income", "size")
+  choice_specific_vars <- c("wait", "vcost", "travel", "gcost")
+  
+  K <- length(unique(df[[alt_id_var]]))
+  print(K)
+  p <- length(choice_specific_vars)
+  N <- nrow(df) / K
+  print(N)
+  
+  # convert choice to 1/0 instead of yes/no
+  df$choice_bin <- as.integer(df[[choice_var]] == "yes")
+  
+  # extract the class labels
+  y <- rep(NA_integer_, N)
+  for (i in 1:N) {
+    rows <- ((i - 1) * K + 1):(i * K)
+    y[i] <- which(df$choice_bin[rows] == 1) - 1  # convert to 0-based class label
+  }
+  
+  # extract individual-specific predictors (take first row per individual)
+  indiv_df <- df[seq(1, nrow(df), by = K), individual_vars, drop = FALSE]
+  
+  # extract choice-specific predictors and reshape into wide format
+  X_wide <- matrix(NA, nrow = N, ncol = K * p)
+  for (i in 1:N) {
+    rows <- ((i - 1) * K + 1):(i * K)
+    Xi <- as.matrix(df[rows, choice_specific_vars])
+    X_wide[i, ] <- as.vector(t(Xi))  # flatten row-wise
+  }
+  
+  # combine choice-specific and individual-specific predictors
+  X <- cbind(X_wide, indiv_df)
+  
+  # Optionally assign column names
+  alt_names <- unique(df[[alt_id_var]])
+  colnames(X) <- c(
+    paste0(rep(alt_names, each = p), "_", rep(choice_specific_vars, times = K)),
+    individual_vars
+  )
+  
+  return(list(X = X, y = y))
 }
