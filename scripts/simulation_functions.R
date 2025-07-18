@@ -19,48 +19,48 @@ source("soft_mpbart.R")
 #'\item{y_test}{Vector of responses for test data}
 generate_dgp1_data <- function(n_train, n_test) {
   
-  # helper functions: one latent function per class
-  compute_z0 <- function(x1, x2, eps) {
+  # latent functions
+  compute_z1 <- function(x1, x2, eps) {
     ifelse(x1 <= 0.5,
            5 * sin(2 * pi * x1) + 3 * x2 + eps,
            5 * sin(2 * pi * x1) - 3 * x2 + eps)
   }
   
-  compute_z1 <- function(x1, x2, eps) {
+  compute_z2 <- function(x1, x2, eps) {
     ifelse(x2 <= 0.3,
            4 * cos(pi * x2) + x1 + eps,
-           8 * cos(pi * x2) - x1 + eps)
-  }
-  
-  compute_z2 <- function(x1, x2, eps) {
-    ifelse(x1 + x2 <= 1,
-           3 * sin(pi * (x1 + x2)) + eps,
-           7 * sin(pi * (x1 + x2)) + 2) + eps
+           8 * cos(pi * x2) - x1 - 2 + eps)
   }
   
   # train data
   X_train <- matrix(runif(n_train * 2), ncol = 2)
-  eps_train <- matrix(rnorm(n_train * 3), ncol = 3) # 3 noises, one per class
+  eps_train <- matrix(rnorm(n_train * 2), ncol = 2) 
   
   z_train <- cbind(
-    compute_z0(X_train[, 1], X_train[, 2], eps_train[,1]),
-    compute_z1(X_train[, 1], X_train[, 2], eps_train[,2]),
-    compute_z2(X_train[, 1], X_train[, 2], eps_train[,3])
+    compute_z1(X_train[, 1], X_train[, 2], eps_train[,1]),
+    compute_z2(X_train[, 1], X_train[, 2], eps_train[,2])
   )
   
   # test data
   X_test <- matrix(runif(n_test * 2), ncol = 2)
-  eps_test <- matrix(rnorm(n_test * 3), ncol = 3)
+  eps_test <- matrix(rnorm(n_test * 2), ncol = 2)
   
   z_test <- cbind(
-    compute_z0(X_test[, 1], X_test[, 2], eps_test[,1]),
-    compute_z1(X_test[, 1], X_test[, 2], eps_test[,2]),
-    compute_z2(X_test[, 1], X_test[, 2], eps_test[,3])
+    compute_z1(X_test[, 1], X_test[, 2], eps_test[,1]),
+    compute_z2(X_test[, 1], X_test[, 2], eps_test[,2])
   )
   
-  # assign class labels as the index of max latent value per row (subtract 1 to have classes 0,1,2)
+  # assign class labels 
   assign_class <- function(z_matrix) {
-    apply(z_matrix, 1, function(z) which.max(z) - 1)
+    apply(z_matrix, 1, function(z) {
+      if (all(z < 0)) {
+        return(0)
+      } else if (z[1] > z[2]) {
+        return(1)
+      } else {
+        return(2)
+      }
+    })
   }
   
   y_train <- assign_class(z_train)
@@ -97,42 +97,42 @@ generate_dgp2_data <- function(n_train, n_test, p) {
   X_test  <- matrix(runif(n_test  * p), nrow = n_test,  ncol = p)
   
   # define latent functions
-  compute_z0 <- function(X) {
-    10 * sin(pi * X[,1] * X[,2]) + 
+  compute_z1 <- function(X) {
+    10 * sin(pi * X[,1] * X[,2]) - 
       20 * (X[,3] - 0.5)^2 + 
       10 * X[,4] + 
-      5 * X[,5]
-  }
-  
-  compute_z1 <- function(X) {
-    8 * cos(pi * X[,6] * X[,7]) + 
-      15 * (X[,8] - 0.4)^2 + 
-      7 * X[,9] + 
-      3 * X[,10]
+      5 * X[,5] - 10
   }
   
   compute_z2 <- function(X) {
-    12 * sin(1.5 * pi * X[,3] * X[,8]) + 
-      10 * (X[,5] - 0.6)^2 + 
-      6 * X[,1] + 
-      8 * X[,7]
+    8 * cos(pi * X[,6] * X[,7]) - 
+      15 * (X[,8] - 0.4)^2 + 
+      7 * X[,9] + 
+      3 * X[,10] - 10
   }
   
   # generate latent variables + noise for train and test
   z_train <- cbind(
-    compute_z0(X_train) + rnorm(n_train),
     compute_z1(X_train) + rnorm(n_train),
     compute_z2(X_train) + rnorm(n_train)
   )
   
   z_test <- cbind(
-    compute_z0(X_test) + rnorm(n_test),
     compute_z1(X_test) + rnorm(n_test),
     compute_z2(X_test) + rnorm(n_test)
   )
-
+  
+  # assign class labels
   assign_class <- function(z_matrix) {
-    apply(z_matrix, 1, function(z) which.max(z) - 1)
+    apply(z_matrix, 1, function(z) {
+      if (all(z < 0)) {
+        return(0)
+      } else if (z[1] > z[2]) {
+        return(1)
+      } else {
+        return(2)
+      }
+    })
   }
   
   y_train <- assign_class(z_train)
@@ -152,64 +152,72 @@ generate_dgp2_data <- function(n_train, n_test, p) {
 #'
 #'@param n_train Number of training observations to be generated
 #'@param n_test Number of test observations to be generated
-#'@param n_predictors Number of predictors to include
-#'@param n_classes Number of class labels
 #'@return A list containing the following objects:
 #'\item{X_train}{Matrix of predictors for training data}
 #'\item{y_train}{Vector of responses for training data}
 #'\item{X_test}{Matrix of predictors for test data}
 #'\item{y_test}{Vector of responses for test data}
-generate_dgp3_data <- function(n_train, n_test,
-                                  n_predictors = 8,
-                                  n_classes = 3) {
+generate_dgp3_data <- function(n_train, n_test) {
   
   n_total <- n_train + n_test
+  n_choices <- 3
+  p <- 5 # number of features
   
-  # latent variable z governs all structure (smooth and 1D)
-  z <- runif(n_total, min = 0, max = 2 * pi)
+  # generate choice-specific predictors
+  W <- array(runif(n_total * n_choices * p), dim = c(n_total, n_choices, p))
   
-  # predictors: smooth nonlinear transformations of z
-  X <- matrix(0, nrow = n_total, ncol = n_predictors)
-  if (n_predictors >= 1) X[, 1] <- sin(z)
-  if (n_predictors >= 2) X[, 2] <- cos(2 * z)
-  if (n_predictors >= 3) X[, 3] <- z^2
-  if (n_predictors >= 4) X[, 4] <- exp(-z)
-  if (n_predictors >= 5) X[, 5] <- sin(3 * z)
-  if (n_predictors >= 6) X[, 6] <- cos(5 * z)
-  if (n_predictors >= 7) X[, 7] <- log(z + 1e-2)
-  if (n_predictors >= 8) X[, 8] <- sqrt(z)
+  # generate individual predictor
+  v <- runif(n_total, min = 0, max = 2)
   
-  # class-specific latent functions (smooth functions of z)
-  F_all <- matrix(0, nrow = n_total, ncol = n_classes)
-  F_all[, 1] <- sin(z)
-  F_all[, 2] <- cos(z)
-  F_all[, 3] <- exp(- (z - pi)^2)
+  # create X_train and X_test
+  W_flat <- matrix(W, nrow = n_total, ncol = n_choices * p) # flatten to n_total x (n_choices*p)
+  X_total <- cbind(W_flat, v)
+  X_train <- X_total[1:n_train,]
+  X_test <- X_total[(n_train + 1):n_total,]
   
-  shifts <- c(-2, 0, 2)
-  F_all <- sweep(F_all, 2, shifts, "+")
-  
-  # Softmax function
-  softmax <- function(F) {
-    expF <- exp(F - apply(F, 1, max))  # for numerical stability
-    expF / rowSums(expF)
-  }
-  P_all <- softmax(F_all)
-  
-  # sample class labels
-  sample_labels <- function(P) {
-    apply(P, 1, function(p) sample(0:(n_classes - 1), size = 1, prob = p))
+  # latent function
+  compute_z <- function(W_vec1, W_vec2, v) {
+    W_diff <- W_vec1 - W_vec2
+    
+    res <- 20 * sin(pi * W_diff[1] * W_diff[2]) - 
+      20 * (W_diff[3] - 0.5)^2 + 
+      10 * W_diff[4] + 
+      5 * W_diff[5] + 8 * v
+    
+    return(res)
   }
   
-  y_all <- sample_labels(P_all)
-  y_train <- y_all[1:n_train]
-  y_test  <- y_all[(n_train + 1):n_total]
+  # compute latent variables
+  z <- matrix(NA_real_, nrow = n_total, ncol = 2)
+  for (i in 1:n_total) {
+    z[i, 1] <- compute_z(W[i,1,], W[i,3,], v[i])
+    z[i, 2] <- compute_z(W[i,2,], W[i,3,], v[i])
+  }
   
-  X_train <- X[1:n_train, , drop = FALSE]
-  X_test  <- X[(n_train + 1):n_total, , drop = FALSE]
+  # generate noise
+  mu <- c(0, 0)  # mean vector
+  Sigma <- matrix(c(1, 0.5, 
+                    0.5, 1), nrow = 2)
+  eps <- mvrnorm(n = n_total, mu = mu, Sigma = Sigma)
   
-  # rank normalize predictors
-  X_train <- rank_normalize(X_train)
-  X_test <- rank_normalize(X_test)
+  z <- z + eps # add noise
+  
+  # assign class labels
+  assign_class <- function(z_matrix) {
+    apply(z_matrix, 1, function(z) {
+      if (all(z < 0)) {
+        return(0)
+      } else if (z[1] > z[2]) {
+        return(1)
+      } else {
+        return(2)
+      }
+    })
+  }
+  
+  y_total <- assign_class(z)
+  y_train <- y_total[1:n_train]
+  y_test <- y_total[(n_train + 1):n_total]
   
   result <- list(
     X_train = X_train,
@@ -241,7 +249,7 @@ run_method <- function(method, sim_data, which_dgp) {
     mtry_grid <- c(2, 4, 8, 15, 30, 60)
   } else if (which_dgp == "dgp3") {
     num_classes <- 3
-    mtry_grid <- c(2, 3, 4, 6, 8)
+    mtry_grid <- c(3, 4, 5, 8, 12, 16)
   } else {
       stop("Run with a correct DGP. Choose from 'dgp1', 'dgp2', 'dgp2extranoise', 'dgp3'")
   }
@@ -305,7 +313,7 @@ run_method <- function(method, sim_data, which_dgp) {
   writeData(wb_output, sheet = "misclassification_rates", x = error_rates)
   writeData(wb_output, sheet = "brier_scores", x = brier_scores)
   
-  path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/{method}_{which_dgp}_output.xlsx")
+  path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/{method}_{which_dgp}_test_output.xlsx")
   saveWorkbook(wb_output, path, overwrite = TRUE)
 }
 

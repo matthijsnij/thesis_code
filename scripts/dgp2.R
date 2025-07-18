@@ -22,7 +22,7 @@ dgp2_setting <- "dgp2extranoise" # choose from 'dgp2' and 'dgp2extranoise'
 
 # generate replications
 n_extra_noise <- 50 # number of extra noise predictors to include
-dgp2_data <- lapply(1:n_rep, function(i) generate_dgp2_data(n_train, n_test, p = (10 + n_extra_noise)))
+dgp2_data <- lapply(1:n_rep, function(i) generate_dgp2_data_test(n_train, n_test, p = (10 + n_extra_noise)))
 
 # write all generated data to excel
 #write_data(n_rep = n_rep, all_data = dgp2_data, which_dgp = dgp2_setting, seed = seed)
