@@ -95,6 +95,9 @@ run_method <- function(method, data, which_dataset, seed) {
   # to store output
   wb_output <- createWorkbook()
   
+  # to store test labels and predicted probabilities for all folds
+  test_labels_and_probs <- list()
+  
   for (i in seq_along(folds)) {
     
     # get correct train and test data
@@ -132,6 +135,9 @@ run_method <- function(method, data, which_dataset, seed) {
     brier_score <- brier_score_multiclass(y_actual = y_test, y_prob = pred_output$post_probs)
     error_rates[i] <- error
     brier_scores[i] <- brier_score
+    
+    # store predicted probabilities and true class labels for test set
+    test_labels_and_probs[[i]] <- list(labels = y_test, pred_probs = pred_output$post_probs)
   }
   
   # save output
@@ -140,8 +146,12 @@ run_method <- function(method, data, which_dataset, seed) {
   writeData(wb_output, sheet = "misclassification_rates", x = error_rates)
   writeData(wb_output, sheet = "brier_scores", x = brier_scores)
   
-  path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/{method}_{which_dataset}_output.xlsx")
+  path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/{method}_{which_dataset}_test_output.xlsx")
   saveWorkbook(wb_output, path, overwrite = TRUE)
+  
+  # save test labels and predicted probabilities for calibration analysis
+  rds_path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/calibration_{method}_{which_dataset}.rds")
+  saveRDS(test_labels_and_probs, file = rds_path)
 }
 
 # ------ PREP TRAVEL MODE DATA SET ------

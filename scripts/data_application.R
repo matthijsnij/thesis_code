@@ -10,7 +10,7 @@ source("data_application_functions.R")
 # ---- READ DATA -----
 
 # specify which data set to run
-dataset <- "fishing"   # choose from "glass", "vertebral", "iris", "wine", "vehicle", "vowel", "travel"
+dataset <- "vowel"   # choose from "glass", "vertebral", "iris", "wine", "vehicle", "vowel", "waveform", "travel", "fishing"
 data <- read_data(dataset = dataset)
 
 # specify which method to run

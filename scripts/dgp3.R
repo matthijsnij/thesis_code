@@ -15,7 +15,7 @@ set.seed(seed)  # for reproducibility
 n_train <- 500
 n_test <- 1000
 n_rep <- 10
-method <- "smpbart"   # choose from "smpbart", "mpbart","rf"
+method <- "mpbart"   # choose from "smpbart", "mpbart","rf"
 
 # ------ GENERATE DATA -----
 
