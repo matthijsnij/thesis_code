@@ -36,8 +36,8 @@ make_calibration_bins <- function(top_prob, n_bins) {
 }
 
 # ---- READ DATA ----
-dataset <- "vowel"
-method <- "rf"
+dataset <- "vehicle"
+method <- "mpbart"
 n_bins <- 10 # number of bins for calibration plot
 rds_path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/calibration_plots/calibration_{method}_{dataset}.rds")
 data <- readRDS(rds_path)
