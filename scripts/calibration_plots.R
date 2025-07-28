@@ -36,7 +36,7 @@ make_calibration_bins <- function(top_prob, n_bins) {
 }
 
 # ---- READ DATA ----
-dataset <- "vehicle"
+dataset <- "wine"
 method <- "mpbart"
 n_bins <- 10 # number of bins for calibration plot
 rds_path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/calibration_plots/calibration_{method}_{dataset}.rds")
@@ -69,7 +69,7 @@ df_plot <- data.frame(
 
 # save to excel
 file_path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/calibration_plots/plot_data_{dataset}_{method}.xlsx")
-write_xlsx(df_plot, path = file_path)
+#write_xlsx(df_plot, path = file_path)
 
 # create plot
 ggplot(df_plot, aes(x = avg_pred_probs, y = empirical_accuracies)) +
