@@ -1,4 +1,4 @@
-# Loading and preprocessing data sets for S-MPBART
+# Loading and preprocessing data sets
 
 source("soft_mpbart.R")
 source("data_application_functions.R")
@@ -43,8 +43,6 @@ travel_X <- travel_data$X
 data("Fishing", package = "mlogit")
 fishing_y <- Fishing[[1]]
 fishing_X <- as.matrix(Fishing[, 2:ncol(Fishing)])
-
-
 
 # ------------ PREPROCESS DATA -------------
 
@@ -135,15 +133,15 @@ fishing_X_norm <- rank_normalize(fishing_X)
 
 
 # --------- SAVE PREPROCESSED DATA SETS -------------
-write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-write.table(as.data.frame(cbind(iris_X_norm, iris_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/iris_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-write.table(as.data.frame(cbind(wine_X_norm, wine_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/wine_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-write.table(as.data.frame(cbind(vehicle_X_norm, vehicle_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vehicle_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-write.table(as.data.frame(cbind(vowel_X_norm, vowel_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vowel_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-write.table(as.data.frame(cbind(waveform_X_norm, waveform_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/waveform_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-write.table(as.data.frame(cbind(travel_X_norm, travel_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/travel_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
-write.table(as.data.frame(cbind(fishing_X_norm, fishing_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/fishing_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(glass_X_norm, glass_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/glass_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(vertebral_X_norm, vertebral_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vertebral_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(iris_X_norm, iris_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/iris_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(wine_X_norm, wine_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/wine_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(vehicle_X_norm, vehicle_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vehicle_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(vowel_X_norm, vowel_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/vowel_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(waveform_X_norm, waveform_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/waveform_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(travel_X_norm, travel_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/travel_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
+#write.table(as.data.frame(cbind(fishing_X_norm, fishing_y)), "C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/data/fishing_preprocessed.csv", sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 

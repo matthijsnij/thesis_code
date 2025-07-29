@@ -46,8 +46,11 @@ rf_multiclass <- function(X_train, y_train, X_test, mtry) {
 rf_multiclass_cv <- function(X_train, y_train, X_test, mtry_grid, K = 5, seed = 123) {
   set.seed(seed)
   y_train <- as.factor(y_train)
+  
+  # create cv folds
   folds <- createFolds(y_train, k = K, list = TRUE, returnTrain = FALSE)
   
+  # to store accuracies
   accuracy_results <- data.frame(mtry = mtry_grid, accuracy = NA)
   
   for (i in seq_along(mtry_grid)) {
@@ -58,6 +61,7 @@ rf_multiclass_cv <- function(X_train, y_train, X_test, mtry_grid, K = 5, seed = 
       test_idx <- folds[[k]]
       train_idx <- setdiff(seq_along(y_train), test_idx)
       
+      # split data
       X_tr <- X_train[train_idx, , drop = FALSE]
       y_tr <- y_train[train_idx]
       X_val <- X_train[test_idx, , drop = FALSE]

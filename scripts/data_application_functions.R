@@ -146,12 +146,12 @@ run_method <- function(method, data, which_dataset, seed) {
   writeData(wb_output, sheet = "misclassification_rates", x = error_rates)
   writeData(wb_output, sheet = "brier_scores", x = brier_scores)
   
-  path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/{method}_{which_dataset}_test_output.xlsx")
+  path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/output/{method}_{which_dataset}_output.xlsx")
   #saveWorkbook(wb_output, path, overwrite = TRUE)
   
   # save test labels and predicted probabilities for calibration analysis
   rds_path <- glue("C:/Users/matth/OneDrive/Bureaublad/msc_thesis/thesis_code/calibration_plots/calibration_{method}_{which_dataset}.rds")
-  saveRDS(test_labels_and_probs, file = rds_path)
+  #saveRDS(test_labels_and_probs, file = rds_path)
 }
 
 # ------ PREP TRAVEL MODE DATA SET ------

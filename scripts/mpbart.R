@@ -4,6 +4,18 @@ library(GcompBART)
 
 # ------ MPBART FUNCTION -------
 
+#'@description Function for running MPBART as implemented by Xu et al. (2024)
+#'
+#'@param X_train Matrix of covariates - train data
+#'@param y_train Vector of class labels - train data
+#'@param X_test Matrix of covariates - test data
+#'@param num_burnin Number of burn-in iterations
+#'@param num_sim Number of iterations, post burn-in
+#'@param num_trees Number of trees in the BART model
+#'@param num_classes Number of outcome classes
+#'@return List containing
+#'\item{pred_y}{Vector of predicted class labels on test set}
+#'\item{post_probs}{Matrix of predicted class probabilities on test set}
 mpbart <- function(X_train, # matrix of covariates - training data
                    y_train, # vector of class labels - training data
                    X_test, # matrix of covariates - test data

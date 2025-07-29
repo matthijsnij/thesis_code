@@ -109,7 +109,7 @@ soft_mpbart <- function(y_train, # training data - outcomes
                         quiet = FALSE # whether you want progress bar to show
 ) {
   
-  # set seed for reproduceability if passed
+  # set seed for reproducibility if passed
   if (!is.null(seed)) {
     set.seed(seed = seed)
   }
