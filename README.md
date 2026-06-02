@@ -1,8 +1,10 @@
 # thesis_code
 
-This repository contains the R code for my MSc thesis:
+This repository contains the R code and thesis document for my MSc thesis:
 
-S-MPBART: Soft Multinomial Probit Bayesian Additive Regression Trees.
+**S-MPBART: Soft Multinomial Probit Bayesian Additive Regression Trees**
+
+The full thesis is available here: [MSc_Thesis_MatthijsNijeboer.pdf](MSc_Thesis_MatthijsNijeboer.pdf)
 
 ---
 
@@ -10,6 +12,7 @@ S-MPBART: Soft Multinomial Probit Bayesian Additive Regression Trees.
 
 ```
 thesis_code/
+├── MSc_Thesis_MatthijsNijeboer.pdf  # Full thesis document
 ├── scripts/               # All R source files
 ├── data/                  # Preprocessed real-world datasets (CSV)
 ├── output/                # Excel files with prediction results per method/dataset
